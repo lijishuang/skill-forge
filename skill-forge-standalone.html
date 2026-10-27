@@ -1,0 +1,1674 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Skill 工坊 · 独立版</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --panel:#ffffff; --border:#e5e7eb; --border-strong:#d1d5db;
+    --text:#1f2328; --text-2:#57606a; --text-3:#8b949e;
+    --accent:#2563eb; --accent-soft:#eff6ff; --accent-border:#bfdbfe;
+    --green:#16a34a; --green-soft:#f0fdf4; --amber:#b45309; --amber-soft:#fffbeb;
+    --radius:12px; --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+    background:var(--bg);color:var(--text);font-size:14px;line-height:1.6}
+  header{background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;padding:16px 28px;
+    display:flex;align-items:center;gap:14px}
+  .logo{width:38px;height:38px;border-radius:10px;background:rgba(255,255,255,.2);
+    display:flex;align-items:center;justify-content:center;font-size:19px}
+  header h1{font-size:17px;font-weight:600}
+  header p{font-size:12.5px;opacity:.85}
+  .steps{margin-left:auto;display:flex;gap:8px}
+  .step{display:flex;align-items:center;gap:6px;font-size:12px;background:rgba(255,255,255,.15);
+    border-radius:99px;padding:4px 12px}
+  .step.on{background:#fff;color:var(--accent);font-weight:600}
+  .banner{display:none;max-width:1400px;margin:14px auto -4px;padding:10px 16px;border-radius:10px;
+    font-size:13px;align-items:center;gap:10px}
+  .banner.show{display:flex}
+  .banner.save{background:var(--amber-soft);border:1px solid #fde68a;color:#92400e}
+  .banner.exec{background:var(--accent-soft);border:1px solid var(--accent-border);color:#1d4ed8}
+  .banner b{font-weight:600}
+  .banner button{padding:4px 12px;font-size:12px}
+  main{display:grid;grid-template-columns:430px 1fr;gap:20px;padding:20px 28px;max-width:1400px;margin:0 auto}
+  @media(max-width:980px){main{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:18px}
+  .card h2{font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px;margin-bottom:12px}
+  .card h2 .tag{font-size:11px;font-weight:500;color:var(--text-3);margin-left:auto}
+  .col{display:flex;flex-direction:column;gap:20px}
+  .drop{border:2px dashed var(--border-strong);border-radius:10px;padding:22px 16px;text-align:center;
+    cursor:pointer;transition:.15s;color:var(--text-2)}
+  .drop:hover,.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+  .drop .big{font-size:24px;margin-bottom:4px}
+  .btnrow{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center}
+  button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--border-strong);
+    background:var(--panel);color:var(--text);padding:7px 14px;font-size:13px;transition:.15s}
+  button:hover{border-color:var(--accent);color:var(--accent)}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+  button.primary:hover{opacity:.9;color:#fff}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  .divider{display:flex;align-items:center;gap:10px;color:var(--text-3);font-size:12px;margin:12px 0}
+  .divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--border)}
+  textarea{width:100%;min-height:96px;border:1px solid var(--border-strong);border-radius:8px;
+    padding:10px;font:12.5px var(--mono);resize:vertical}
+  textarea:focus,input:focus,select:focus{outline:2px solid var(--accent-border);border-color:var(--accent)}
+  input,select{width:100%;border:1px solid var(--border-strong);border-radius:8px;padding:8px 10px;
+    font:inherit;font-size:13px;background:var(--panel)}
+  label.f{display:block;font-size:12px;color:var(--text-2);margin:10px 0 4px;font-weight:500}
+  .skill-item{display:flex;align-items:center;gap:8px;border:1px solid var(--border);border-radius:8px;
+    padding:8px 10px;margin-bottom:6px;cursor:pointer;transition:.15s;font-size:13px}
+  .skill-item:hover{border-color:var(--accent);background:var(--accent-soft)}
+  .skill-item.active{border-color:var(--accent);background:var(--accent-soft)}
+  .skill-item .n{flex:1;font-weight:600;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .skill-item .d{font-size:11px;color:var(--text-3)}
+  .skill-item .del{color:var(--text-3);padding:2px 6px;border-radius:4px;font-size:12px}
+  .skill-item .del:hover{color:#dc2626;background:#fef2f2}
+  .skill-card{border:1px solid var(--accent-border);background:var(--accent-soft);border-radius:10px;padding:14px}
+  .hidden{display:none!important}
+  .skill-card h3{font-size:15px;display:flex;align-items:center;gap:8px}
+  .skill-card .desc{font-size:12.5px;color:var(--text-2);margin-top:4px;max-height:60px;overflow:auto}
+  .meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .chip{font-size:11px;background:#fff;border:1px solid var(--border);border-radius:99px;padding:2px 10px;color:var(--text-2)}
+  /* 结果 markdown 渲染 */
+  .out.md{white-space:normal}
+  .out.md p{margin:6px 0}
+  .out.md h3,.out.md h4,.out.md h5,.out.md h6{margin:12px 0 4px;font-size:1.05em}
+  .out.md table{border-collapse:collapse;margin:8px 0;width:100%}
+  .out.md th,.out.md td{border:1px solid var(--border);padding:5px 9px;font-size:12.5px;text-align:left}
+  .out.md th{background:#f0f2f5;font-weight:600}
+  .out.md tr:nth-child(even) td{background:#fafbfc}
+  .out.md code{background:#eef1f4;border-radius:4px;padding:1px 5px;font-family:var(--mono);font-size:12.5px}
+  .out.md pre{background:#0d1117;color:#e6edf3;padding:12px 14px;border-radius:8px;overflow:auto;margin:8px 0}
+  .out.md pre code{background:none;color:inherit;padding:0}
+  .out.md ul,.out.md ol{padding-left:22px;margin:6px 0}
+  .out.md li{margin:2px 0}
+  .out.md hr{border:none;border-top:1px solid var(--border);margin:12px 0}
+  .out.md a{color:var(--accent)}
+  /* 生成历史 */
+  .hist-item{display:flex;align-items:center;gap:8px;border:1px solid var(--border);border-radius:8px;
+    padding:9px 12px;margin-bottom:6px;cursor:pointer;transition:.15s;font-size:13px}
+  .hist-item:hover{border-color:var(--accent);background:var(--accent-soft);transform:translateY(-1px)}
+  .hist-item .n{flex:1;font-weight:600;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .hist-item .d{font-size:11px;color:var(--text-3);white-space:nowrap}
+  .badge{font-size:10px;border-radius:4px;padding:1px 6px;font-weight:600}
+  .badge.html{background:var(--accent-soft);color:var(--accent)}
+  .badge.text{background:var(--green-soft);color:var(--green)}
+  .hist-item .del{color:var(--text-3);padding:2px 6px;border-radius:4px;font-size:12px}
+  .hist-item .del:hover{color:#dc2626;background:#fef2f2}
+  .mini-ico{font-size:12px;padding:2px 7px;border-radius:6px;border:1px solid var(--border);background:#fff;cursor:pointer;line-height:1.4}
+  .mini-ico:hover{border-color:var(--accent);background:var(--accent-soft)}
+  .storewarn{background:#fef3c7;border:1px solid #fcd34d;color:#92400e;border-radius:10px;
+    padding:10px 14px;font-size:12.5px;margin-bottom:14px}
+  .badge.tool{background:#fef3c7;color:#b45309}
+  .page-item .n{cursor:text}
+  .page-item .n[contenteditable="true"]{outline:1px dashed var(--accent);border-radius:4px;padding:0 4px}
+  /* 结果查看器 */
+  .viewer{position:fixed;inset:0;background:rgba(15,18,25,.55);z-index:100;
+    display:flex;align-items:center;justify-content:center;padding:24px}
+  .viewer-box{background:#fff;border-radius:14px;width:min(960px,100%);height:min(86vh,900px);
+    display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+  .viewer-head{display:flex;align-items:center;gap:10px;padding:12px 18px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+  .viewer-head b{font-size:14px}
+  .vw-meta{font-size:12px;color:var(--text-3)}
+  .viewer-head .btnrow{margin:0 0 0 auto}
+  .viewer-head button{padding:5px 12px;font-size:12px}
+  .viewer-body{flex:1;overflow:auto;padding:16px}
+  .vw-frame{width:100%;height:100%;border:none;border-radius:8px;background:#fff}
+  .field{margin-bottom:14px}
+  .field .fl{font-size:13px;font-weight:500;margin-bottom:4px;display:flex;align-items:center;gap:6px}
+  .field .fl .req{color:#dc2626;font-size:11px}
+  .field .fk{font-size:11px;color:var(--text-3);font-family:var(--mono);font-weight:400}
+  .field .hint{font-size:11.5px;color:var(--text-3);margin-bottom:5px}
+  .empty{border:1px dashed var(--border-strong);border-radius:10px;padding:40px 20px;text-align:center;color:var(--text-3)}
+  .empty .big{font-size:30px;margin-bottom:8px}
+  .out{border:1px solid var(--border);border-radius:10px;background:#fbfbfc;min-height:120px;
+    padding:16px;font-size:13.5px;white-space:pre-wrap;word-break:break-word}
+  .out.preview{padding:0;background:#fff;overflow:hidden;white-space:normal}
+  .out.preview iframe{width:100%;height:560px;border:none;display:block;background:#fff}
+  .seg{display:inline-flex;border:1px solid var(--border-strong);border-radius:8px;overflow:hidden;margin-bottom:10px}
+  .seg button{border:none;border-radius:0;padding:5px 14px;font-size:12px;background:var(--panel)}
+  .seg button.on{background:var(--accent);color:#fff;font-weight:600}
+  .statusbar{font-size:12.5px;color:var(--text-2);margin-bottom:10px;min-height:18px}
+  .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--border-strong);margin-right:6px}
+  .dot.run{background:var(--accent);animation:pulse 1s infinite}
+  .dot.ok{background:var(--green)} .dot.err{background:#dc2626}
+  @keyframes pulse{50%{opacity:.3}}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1f2328;color:#fff;
+    padding:10px 20px;border-radius:10px;font-size:13px;opacity:0;transition:.3s;pointer-events:none;z-index:99}
+  .toast.show{opacity:.95}
+  details summary{cursor:pointer;font-size:12.5px;color:var(--text-2);font-weight:500}
+  .mode-badge{font-size:11px;border-radius:99px;padding:2px 10px;font-weight:500}
+  .mode-heuristic{background:var(--green-soft);color:var(--green)}
+  .mode-ai{background:var(--accent-soft);color:var(--accent)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">⚒</div>
+  <div>
+    <h1>Skill 工坊 · 独立版</h1>
+    <p>独立版：双击打开即用，无需安装插件 · 上传任意 SKILL.md → 生成界面 → 单独打开为 HTML 页面</p>
+  </div>
+  <div class="steps">
+    <div class="step on" id="st1">1 上传 Skill</div>
+    <div class="step" id="st2">2 生成界面</div>
+    <div class="step" id="st3">3 执行</div>
+  </div>
+  <div class="langsw" id="langSw" data-noi18n style="margin-left:14px">
+    <button data-l="zh">中文</button><button data-l="en">EN</button>
+  </div>
+</header>
+
+<div class="banner save" id="bannerSave">
+  📥 网页选中内容已导入（来自右键「存入 Skill 工坊」）
+  <button class="primary" id="btnSavePending">解析并存入技能库</button>
+  <span style="font-size:11px;opacity:.8" id="saveSrc"></span>
+</div>
+<div class="banner exec" id="bannerExec">
+  ▶ 网页选中内容已导入（来自右键「执行选中内容」），加载 Skill 后会自动填入
+</div>
+
+<main>
+  <div class="storewarn hidden" id="storeWarn">⚠️ 当前环境拦截了浏览器本地存储（常见于内嵌预览面板），数据<strong>仅本次会话有效</strong>，刷新后会丢失。请用浏览器直接打开本文件，或安装浏览器插件版以永久保存。</div>
+  <!-- 左列 -->
+  <div class="col">
+
+    <div class="card" id="libCard">
+      <h2>📚 技能库 <span class="tag" id="libCount"></span></h2>
+      <div id="libList"><p style="font-size:12px;color:var(--text-3)">还没有保存的 Skill。上传后点「存入技能库」，或在网页中选中 SKILL.md 内容右键保存。</p></div>
+    </div>
+
+    <div class="card">
+      <h2>① 上传 Skill <span class="tag">支持 .md / 文件夹</span></h2>
+      <div class="drop" id="drop">
+        <div class="big">📦</div>
+        拖拽 <b style="color:var(--accent)">SKILL.md</b> / <b style="color:var(--accent)">技能压缩包 .zip</b> / 文件夹到这里，或点击选择
+        <input type="file" id="fileInput" multiple accept=".md,.markdown,.txt,.zip" hidden>
+        <input type="file" id="dirInput" webkitdirectory multiple hidden>
+      </div>
+      <div class="btnrow">
+        <button id="btnFiles">选择文件 / .zip</button>
+        <button id="btnDir">选择文件夹</button>
+        <button class="primary" id="btnDemo" style="margin-left:auto">试用示例</button>
+      </div>
+      <div class="divider">或直接粘贴</div>
+      <textarea id="pasteArea" placeholder="把 SKILL.md 完整内容粘贴到这里…"></textarea>
+      <div class="btnrow"><button class="primary" id="btnParsePaste">解析粘贴内容</button></div>
+    </div>
+
+    <div class="card skill-card hidden" id="skillCard">
+      <h3>📄 <span id="skName"></span> <span class="mode-badge mode-heuristic" id="skMode"></span></h3>
+      <div class="desc" id="skDesc"></div>
+      <div class="meta" id="skMeta"></div>
+      <div class="btnrow" style="margin-top:12px">
+        <button id="btnViewRaw">查看原文</button>
+        <button id="btnSaveLib">💾 存入技能库</button>
+        <button class="primary" id="btnAutoUI" style="margin-left:auto">⚡ 生成界面</button>
+      </div>
+    </div>
+
+    <div class="card" id="cfg">
+      <h2>⚙ 模型配置 <span class="tag">存于本机浏览器</span></h2>
+      <details open>
+        <summary>OpenAI 兼容接口（OpenAI / DeepSeek / Kimi / Ollama 等）· 独立版数据存于浏览器 localStorage</summary>
+        <label class="f">API 地址（Base URL，以 /v1 结尾）</label>
+        <input id="cfgBase" placeholder="https://api.deepseek.com/v1">
+        <label class="f">API Key</label>
+        <input id="cfgKey" type="password" placeholder="sk-…">
+        <label class="f">模型名称</label>
+        <input id="cfgModel" placeholder="deepseek-chat / gpt-4o-mini / …">
+      </details>
+      <div class="btnrow">
+        <button class="primary" id="btnAIGen">🤖 AI 智能设计界面</button>
+        <button id="btnManualUI">✏ 手动补字段</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 右列 -->
+  <div class="col">
+    <div class="card">
+      <h2>② 生成的工具界面 <span class="tag" id="formTag">尚未生成</span></h2>
+      <div id="formArea" class="empty">
+        <div class="big">🧩</div>
+        上传并解析 Skill 后点击「生成界面」
+      </div>
+      <div class="btnrow" style="margin-top:14px">
+        <button class="primary" id="btnRun" disabled style="font-size:14px;padding:9px 26px">▶ 用 LLM 执行此 Skill</button>
+        <button id="btnReset" disabled>清空</button>
+        <button id="btnOpenPage" disabled title="把当前这个界面打包成一个独立 HTML 工具页，在新标签页单独打开" style="border-color:var(--accent);color:var(--accent);font-weight:600">🌐 新标签页打开此界面</button>
+        <button id="btnDlPage" disabled title="下载为单文件 HTML，可双击打开、发给别人">⬇ 保存为 .html</button>
+        <button id="btnSavePage" disabled title="保存到「我的页面」，下次一键打开直接用">📥 存入我的页面</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>③ 执行结果</h2>
+      <div class="statusbar"><span class="dot" id="runDot"></span><span id="runStatus">待执行</span> <span id="tokenInfo"></span></div>
+      <div class="seg hidden" id="segBar">
+        <button id="segPreview" class="on">🖼 页面预览</button>
+        <button id="segCode">⌨ 源码</button>
+      </div>
+      <div class="out preview hidden" id="outPreviewWrap"><iframe id="outPreview" sandbox="allow-scripts allow-forms allow-popups allow-modals"></iframe></div>
+      <div class="out" id="output">执行结果将在这里流式输出…</div>
+      <div class="btnrow" style="margin-top:12px">
+        <button id="btnCopy" disabled>复制结果</button>
+        <button id="btnDownload" disabled>下载 .md</button>
+        <button id="btnOpenHtml" class="hidden" style="border-color:var(--accent);color:var(--accent);font-weight:600">🌐 单独打开为 HTML 页面</button>
+        <button id="btnDlHtml" class="hidden">下载 .html</button>
+        <button id="btnSaveHtmlPage" class="hidden" style="border-color:var(--accent);color:var(--accent);font-weight:600">📥 存入我的页面</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🗂 生成历史 <span class="tag" id="histCount"></span>
+        <span style="display:flex;gap:4px;margin-left:2px">
+          <button class="mini-ico" id="histRefresh" title="刷新历史">🔄</button>
+          <button class="mini-ico" id="histClear" title="清空全部历史">🗑</button>
+        </span>
+      </h2>
+      <div id="histList"><p style="font-size:12px;color:var(--text-3)">还没有生成记录。执行成功后会自动保存（保留最近 50 条），点击任意记录可查看页面、或用当时的 Skill 和参数重新生成。</p></div>
+    </div>
+
+    <div class="card">
+      <h2>🧩 我的页面 <span class="tag" id="pageCount"></span>
+        <span style="display:flex;gap:4px;margin-left:2px">
+          <button class="mini-ico" id="pageRefresh" title="刷新列表">🔄</button>
+        </span>
+      </h2>
+      <div id="pageList"><p style="font-size:12px;color:var(--text-3)">还没有保存的页面。把生成的界面或结果里的 HTML 页面「存入我的页面」，下次在这里（或插件弹窗）点击即可直接打开使用。</p></div>
+    </div>
+  </div>
+</main>
+
+<!-- 结果查看器 -->
+<div class="viewer hidden" id="viewer">
+  <div class="viewer-box">
+    <div class="viewer-head">
+      <b id="vwTitle"></b><span class="vw-meta" id="vwMeta"></span>
+      <div class="btnrow">
+        <button class="primary" id="vwRegen">🔄 重新生成</button>
+        <button id="vwOpen" class="hidden">🌐 新标签页打开</button>
+        <button id="vwDownload">⬇ 下载</button>
+        <button id="vwSavePage" class="hidden" style="border-color:var(--accent);color:var(--accent);font-weight:600">📥 存入我的页面</button>
+        <button id="vwClose">✕ 关闭</button>
+      </div>
+    </div>
+    <div class="viewer-body" id="vwBody"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script>window.__TOOL_ASSETS = {"css":"/* Skill 工坊 · 独立工具页样式（tool.html 与导出的单文件页面共用） */\n:root{\n  --bg:#f6f7f9;--panel:#fff;--border:#e5e7eb;--border-strong:#d1d5db;\n  --text:#1f2328;--text-2:#57606a;--text-3:#8b949e;\n  --accent:#2563eb;--accent-soft:#eff6ff;--green:#16a34a;\n  --mono:ui-monospace,\"SF Mono\",Menlo,Consolas,monospace;\n}\n*{box-sizing:border-box;margin:0;padding:0}\nbody{font-family:-apple-system,BlinkMacSystemFont,\"PingFang SC\",\"Microsoft YaHei\",sans-serif;\n  background:var(--bg);color:var(--text);font-size:14px;line-height:1.6}\nheader{background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;padding:18px 28px;display:flex;align-items:center;gap:14px}\n.logo{width:38px;height:38px;border-radius:10px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:19px}\nheader h1{font-size:17px;font-weight:600}\nheader p{font-size:12.5px;opacity:.9;max-width:820px}\n.hb{margin-left:auto;font-size:11.5px;background:rgba(255,255,255,.18);border-radius:99px;padding:4px 12px;white-space:nowrap}\nmain{display:grid;grid-template-columns:420px 1fr;gap:20px;padding:20px 28px;max-width:1400px;margin:0 auto}\n@media(max-width:980px){main{grid-template-columns:1fr}}\n.card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:18px}\n.card h2{font-size:14px;margin-bottom:12px;display:flex;gap:8px;align-items:center}\n.card h2 .tag{margin-left:auto;font-size:11px;color:var(--text-3);font-weight:400}\n.col{display:flex;flex-direction:column;gap:20px}\nlabel.f{display:block;font-size:12px;color:var(--text-2);margin:10px 0 4px;font-weight:500}\ninput,select,textarea{width:100%;border:1px solid var(--border-strong);border-radius:8px;padding:8px 10px;font:inherit;font-size:13px;background:var(--panel)}\ntextarea{min-height:88px;resize:vertical}\ninput:focus,textarea:focus,select:focus{outline:2px solid #bfdbfe;border-color:var(--accent)}\nbutton{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--border-strong);\n  background:var(--panel);color:var(--text);padding:7px 14px;font-size:13px;transition:.15s}\nbutton:hover{border-color:var(--accent);color:var(--accent)}\nbutton.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}\nbutton.primary:hover{opacity:.9;color:#fff}\nbutton:disabled{opacity:.45;cursor:not-allowed}\n.btnrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;align-items:center}\n.field{margin-bottom:14px}\n.field .fl{font-size:13px;font-weight:500;margin-bottom:3px}\n.field .fk{font-size:11px;color:var(--text-3);font-family:var(--mono);margin-left:6px;font-weight:400}\n.field .hint{font-size:11.5px;color:var(--text-3);margin-bottom:5px}\n.field label.ck{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text-2);cursor:pointer}\n.out{border:1px solid var(--border);border-radius:10px;background:#fbfbfc;min-height:160px;padding:16px;\n  font-size:13.5px;white-space:pre-wrap;word-break:break-word;overflow:auto}\n.out.pv{padding:0;background:#fff;white-space:normal;overflow:hidden}\n.out.pv iframe{width:100%;height:560px;border:none;display:block;background:#fff}\n.stat{font-size:12.5px;color:var(--text-2);margin-bottom:10px;min-height:16px}\n.seg{display:inline-flex;border:1px solid var(--border-strong);border-radius:8px;overflow:hidden;margin-bottom:10px}\n.seg button{border:none;border-radius:0;padding:5px 14px;font-size:12px}\n.seg button.on{background:var(--accent);color:#fff;font-weight:600}\n.hide{display:none!important}\n.md table{border-collapse:collapse;margin:8px 0;width:100%}\n.md th,.md td{border:1px solid var(--border);padding:5px 9px;font-size:12.5px;text-align:left}\n.md th{background:#f0f2f5;font-weight:600}\n.md code{background:#eef1f4;border-radius:4px;padding:1px 5px;font-family:var(--mono);font-size:12.5px}\n.md pre{background:#0d1117;color:#e6edf3;padding:12px;border-radius:8px;overflow:auto;margin:8px 0}\n.md pre code{background:none;color:inherit;padding:0}\n.md ul,.md ol{padding-left:22px;margin:6px 0}\n.md h3,.md h4,.md h5,.md h6{margin:12px 0 4px;font-size:1.05em}\n.md p{margin:6px 0}\n.md hr{border:none;border-top:1px solid var(--border);margin:12px 0}\n.md a{color:var(--accent)}\n.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1f2328;color:#fff;\n  padding:10px 20px;border-radius:10px;font-size:13px;opacity:0;transition:.3s;pointer-events:none}\n.toast.show{opacity:.95}\ndetails summary{cursor:pointer;font-size:12.5px;color:var(--text-2);font-weight:500}\n.empty{border:1px dashed var(--border-strong);border-radius:10px;padding:40px 20px;text-align:center;color:var(--text-3)}\n","js":"/* Skill 工坊 · 独立工具页运行时\n   同一份代码用于：扩展内的 tool.html（payload 从 chrome.storage 读）、\n   以及导出的单文件 HTML（payload 由 window.SKILL_PAYLOAD 内联注入）。 */\n\nconst isExt = typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local;\n\nconst $ = id => document.getElementById(id);\nconst I18N = window.I18N || { tr: s => s, apply: () => {}, getLang: () => 'zh' };\nconst escapeHtml = s => String(s).replace(/[&<>\"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;' }[c]));\nconst toast = msg => {\n  const t = $('toast'); t.textContent = I18N.tr(msg); t.classList.add('show');\n  clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 2400);\n};\nconst retr = () => { try { I18N.apply(document.body); } catch (e) {} };\n\n/* ===== 结果渲染工具（与工坊同款） ===== */\nfunction wrapHtmlFragment(frag) {\n  return '<!DOCTYPE html>\\n<html lang=\"zh-CN\">\\n<head>\\n<meta charset=\"UTF-8\">\\n' +\n    '<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\\n</head>\\n<body>\\n' +\n    frag + '\\n</body>\\n</html>';\n}\n\nfunction extractHtml(text) {\n  if (!text || typeof text !== 'string') return null;\n  const fences = [...text.matchAll(/```(?:html|htm)?\\s*\\n([\\s\\S]*?)```/gi)].map(m => m[1]);\n  let cand = fences.find(f => /<html[\\s>]|<!DOCTYPE\\s+html|<body[\\s>]|<div[\\s>]|<section[\\s>]|<svg[\\s>]/i.test(f)) || null;\n  if (!cand) {\n    const i = text.search(/<!DOCTYPE\\s+html|<html[\\s>]/i);\n    if (i >= 0) cand = text.slice(i).replace(/```[\\s\\S]*$/, '');\n    else {\n      const hits = text.match(/<(div|section|main|header|footer|style|table|svg|h1|h2|button|canvas|body)\\b/gi) || [];\n      const strong = /<style[\\s>]|<svg[\\s>]|<canvas[\\s>]|<script[\\s>]|<table[\\s>]/i.test(text);\n      if (hits.length >= 3 && (text.length > 120 || strong)) cand = text;\n    }\n  }\n  if (!cand) return null;\n  cand = cand.trim().replace(/^```[a-z]*\\s*/i, '').replace(/```$/, '').trim();\n  if (!/<html[\\s>]|<!DOCTYPE\\s+html/i.test(cand)) cand = wrapHtmlFragment(cand);\n  return cand;\n}\n\nfunction renderMarkdown(src) {\n  const lines = escapeHtml(src).split('\\n');\n  let html = '', inUl = false, inOl = false, inCode = false, codeBuf = [], tableBuf = [];\n  const inline = t => t\n    .replace(/`([^`]+)`/g, '<code>$1</code>')\n    .replace(/\\*\\*([^*]+)\\*\\*/g, '<b>$1</b>')\n    .replace(/\\*([^*\\n]+)\\*/g, '<i>$1</i>')\n    .replace(/\\[([^\\]]+)\\]\\(([^)]+)\\)/g, '<a href=\"$2\" target=\"_blank\" rel=\"noopener\">$1</a>');\n  const flushList = () => { if (inUl) { html += '</ul>'; inUl = false; } if (inOl) { html += '</ol>'; inOl = false; } };\n  const flushTable = () => {\n    if (!tableBuf.length) return;\n    const rows = tableBuf.map(r => r.replace(/^\\||\\|$/g, '').split('|').map(c => c.trim()));\n    const body = rows.slice(rows[1] && /^:?-+:?$/.test(rows[1][0] || '') ? 2 : 1);\n    html += '<table><thead><tr>' + rows[0].map(c => '<th>' + inline(c) + '</th>').join('') + '</tr></thead><tbody>' +\n      body.map(r => '<tr>' + r.map(c => '<td>' + inline(c) + '</td>').join('') + '</tr>').join('') + '</tbody></table>';\n    tableBuf = [];\n  };\n  for (const line of lines) {\n    if (/^```/.test(line.trim())) {\n      if (inCode) { html += '<pre><code>' + codeBuf.join('\\n') + '</code></pre>'; codeBuf = []; inCode = false; }\n      else { flushList(); flushTable(); inCode = true; }\n      continue;\n    }\n    if (inCode) { codeBuf.push(line); continue; }\n    if (/^\\s*\\|/.test(line)) { flushList(); tableBuf.push(line.trim()); continue; }\n    flushTable();\n    if (/^#{1,6}\\s/.test(line)) {\n      flushList();\n      const l = Math.min(line.match(/^#+/)[0].length + 2, 6);\n      html += '<h' + l + '>' + inline(line.replace(/^#+\\s*/, '')) + '</h' + l + '>';\n      continue;\n    }\n    if (/^\\s*[-*]\\s+/.test(line)) {\n      if (inOl) { html += '</ol>'; inOl = false; }\n      if (!inUl) { html += '<ul>'; inUl = true; }\n      html += '<li>' + inline(line.replace(/^\\s*[-*]\\s+/, '')) + '</li>'; continue;\n    }\n    if (/^\\s*\\d+[.、)]\\s+/.test(line)) {\n      if (inUl) { html += '</ul>'; inUl = false; }\n      if (!inOl) { html += '<ol>'; inOl = true; }\n      html += '<li>' + inline(line.replace(/^\\s*\\d+[.、)]\\s+/, '')) + '</li>'; continue;\n    }\n    if (/^\\s*(-{3,}|\\*{3,})\\s*$/.test(line)) { flushList(); html += '<hr>'; continue; }\n    if (!line.trim()) { flushList(); continue; }\n    flushList(); html += '<p>' + inline(line) + '</p>';\n  }\n  flushList(); flushTable();\n  if (inCode) html += '<pre><code>' + codeBuf.join('\\n') + '</code></pre>';\n  return html;\n}\n\n/* ===== 读取 payload ===== */\nasync function loadPayload() {\n  if (window.SKILL_PAYLOAD) return window.SKILL_PAYLOAD;\n  const id = new URLSearchParams(location.search).get('id');\n  if (isExt) {\n    const { toolPages = {} } = await chrome.storage.local.get(['toolPages']);\n    const p = id ? toolPages[id] : Object.values(toolPages).pop();\n    if (p) return p;\n    // 「我的页面」库里保存的工具页（payload 不含 Key，配置走 toolCfg / 手填）\n    const got = await chrome.storage.local.get(['pages']);\n    const entry = (got.pages || []).find(x => x.type === 'tool' && (!id || x.id === id));\n    if (entry && entry.payload) return entry.payload;\n  }\n  try {\n    const raw = localStorage.getItem('skill_tool_payload');\n    if (raw) return JSON.parse(raw);\n  } catch (e) {}\n  return null;\n}\n\n/* ===== 主流程 ===== */\n(async function main() {\n  const D = await loadPayload();\n  if (!D) {\n    document.body.innerHTML = '<div class=\"empty\" style=\"margin:80px auto;max-width:520px\">' +\n      '没有找到要展示的界面数据。<br>请回到 Skill 工坊，重新点「🌐 新标签页打开此界面」。</div>';\n    return;\n  }\n\n  let running = false, lastResult = '', resultHtml = null;\n\n  document.title = D.name + ' · Skill 工具';\n  $('hdTitle').textContent = D.name;\n  $('hdDesc').textContent = D.description || I18N.tr('由 Skill 工坊生成的独立工具页面');\n  $('fldTag').textContent = I18N.tr(D.fields.length + ' 个字段');\n  if (isExt && history.length > 1) $('btnBack').classList.remove('hide');\n  $('btnBack').onclick = () => { if (history.length > 1) history.back(); };\n\n  /* 表单 */\n  D.fields.forEach(f => {\n    const d = document.createElement('div'); d.className = 'field';\n    d.innerHTML = '<div class=\"fl\">' + escapeHtml(f.label) + '<span class=\"fk\">' + escapeHtml(f.key) + '</span></div>' +\n      (f.hint ? '<div class=\"hint\">' + escapeHtml(f.hint) + '</div>' : '');\n    let ctrl;\n    if (f.type === 'select') {\n      ctrl = document.createElement('select');\n      (f.options && f.options.length ? f.options : ['默认']).forEach(o => {\n        const op = document.createElement('option'); op.value = op.textContent = o; ctrl.appendChild(op);\n      });\n    } else if (f.type === 'textarea') {\n      ctrl = document.createElement('textarea');\n    } else if (f.type === 'checkbox') {\n      ctrl = document.createElement('input'); ctrl.type = 'checkbox'; ctrl.style.width = 'auto';\n      const lab = document.createElement('label'); lab.className = 'ck';\n      lab.appendChild(ctrl); lab.appendChild(document.createTextNode('启用'));\n      ctrl.dataset.key = f.key; d.appendChild(lab); $('form').appendChild(d); return;\n    } else {\n      ctrl = document.createElement('input');\n      ctrl.type = { number: 'number', date: 'date', email: 'email', url: 'url' }[f.type] || 'text';\n    }\n    ctrl.dataset.key = f.key;\n    d.appendChild(ctrl);\n    $('form').appendChild(d);\n  });\n\n  retr();\n\n  /* 配置：优先读插件存储，其次 localStorage */\n  const CK = 'skill_tool_cfg';\n  let saved = {};\n  try { saved = JSON.parse(localStorage.getItem(CK) || '{}') || {}; } catch (e) {}\n  if (isExt) {\n    const { toolCfg = {} } = await chrome.storage.local.get(['toolCfg']);\n    saved = Object.assign({}, saved, toolCfg);\n  }\n  $('cBase').value = saved.base || D.cfg.base || '';\n  $('cKey').value = saved.key || D.cfg.key || '';\n  $('cModel').value = saved.model || D.cfg.model || '';\n  const persist = () => {\n    try { localStorage.setItem(CK, JSON.stringify(saved)); } catch (e) {}\n    if (isExt) chrome.storage.local.set({ toolCfg: saved });\n  };\n  [['cBase', 'base'], ['cKey', 'key'], ['cModel', 'model']].forEach(p => {\n    $(p[0]).addEventListener('change', () => { saved[p[1]] = $(p[0]).value.trim(); persist(); });\n  });\n\n  $('btnClear').onclick = () => {\n    document.querySelectorAll('#form [data-key]').forEach(el => {\n      if (el.type === 'checkbox') el.checked = false; else el.value = '';\n    });\n  };\n\n  function setSeg(pv) {\n    $('segPv').classList.toggle('on', pv); $('segCd').classList.toggle('on', !pv);\n    $('pvWrap').classList.toggle('hide', !pv); $('out').classList.toggle('hide', pv);\n  }\n  $('segPv').onclick = () => setSeg(true);\n  $('segCd').onclick = () => setSeg(false);\n\n  function download(content, type, name) {\n    const a = document.createElement('a');\n    a.href = URL.createObjectURL(new Blob([content], { type: type }));\n    a.download = name; a.click();\n  }\n\n  async function run() {\n    if (running) return;\n    const base = $('cBase').value.trim(), key = $('cKey').value.trim(), model = $('cModel').value.trim();\n    if (!base || !key || !model) { toast('请先填写模型配置（地址 / Key / 模型）'); return; }\n    const values = {};\n    for (const f of D.fields) {\n      const el = document.querySelector('#form [data-key=\"' + f.key + '\"]');\n      if (f.type === 'checkbox') { values[f.key] = el && el.checked ? '是' : '否'; continue; }\n      const v = el ? el.value.trim() : '';\n      if (!v) { toast('请填写「' + f.label + '」'); if (el) el.focus(); return; }\n      values[f.key] = v;\n    }\n    let refText = '';\n    (D.refs || []).forEach(r => { refText += '\\n\\n### 参考文件：' + r.name + '\\n' + String(r.content).slice(0, 8000); });\n    const sys = '你是一个执行「Skill」的助手。\\n# Skill 名称\\n' + D.name +\n      (D.description ? '\\n# 描述\\n' + D.description + '\\n' : '') + '# 完整指令\\n' + D.body + refText;\n    const user = '请根据上述 Skill 指令处理以下输入：\\n' +\n      Object.keys(values).map(k => '【' + k + '】\\n' + values[k]).join('\\n\\n') +\n      '\\n\\n直接输出 Skill 要求的最终结果，不要解释执行过程。';\n\n    running = true; $('btnRun').disabled = true;\n    $('out').setAttribute('data-noi18n', '1');\n    $('stat').textContent = I18N.tr('正在调用模型…');\n    $('out').classList.remove('md'); $('out').textContent = '';\n    $('seg').classList.add('hide'); $('pvWrap').classList.add('hide'); $('out').classList.remove('hide');\n    try {\n      const res = await fetch(base.replace(/\\/+$/, '') + '/chat/completions', {\n        method: 'POST',\n        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },\n        body: JSON.stringify({\n          model: model,\n          messages: [{ role: 'system', content: sys }, { role: 'user', content: user }],\n          stream: true, temperature: 0.7\n        })\n      });\n      if (!res.ok) {\n        let d = ''; try { d = (await res.json()).error.message || ''; } catch (e) {}\n        throw new Error('HTTP ' + res.status + ' ' + d);\n      }\n      const reader = res.body.getReader(); const dec = new TextDecoder(); let buf = '', out = '';\n      while (true) {\n        const r = await reader.read(); if (r.done) break;\n        buf += dec.decode(r.value, { stream: true });\n        const lines = buf.split('\\n'); buf = lines.pop();\n        for (const line of lines) {\n          const s = line.trim(); if (s.indexOf('data:') !== 0) continue;\n          const pl = s.slice(5).trim(); if (pl === '[DONE]') continue;\n          try {\n            const o = JSON.parse(pl);\n            const dl = o.choices && o.choices[0] && o.choices[0].delta && o.choices[0].delta.content;\n            if (dl) { out += dl; $('out').textContent = out; $('stat').textContent = I18N.tr('正在输出… ' + out.length + ' 字符'); }\n          } catch (e) {}\n        }\n      }\n      lastResult = out;\n      $('stat').textContent = I18N.tr('完成（' + out.length + ' 字符）');\n      finish();\n    } catch (e) {\n      $('stat').textContent = I18N.tr('执行失败');\n      $('out').textContent = '❌ ' + e.message + I18N.tr('\\n\\n常见原因：接口地址需以 /v1 结尾；Key 无效或额度不足；浏览器跨域限制。');\n    }\n    running = false; $('btnRun').disabled = false;\n  }\n\n  function finish() {\n    resultHtml = extractHtml(lastResult);\n    if (resultHtml) {\n      $('pv').srcdoc = resultHtml;\n      $('seg').classList.remove('hide');\n      $('out').classList.add('hide'); $('pvWrap').classList.remove('hide'); setSeg(true);\n      $('btnOpenHtml').classList.remove('hide'); $('btnDlHtml').classList.remove('hide');\n    } else {\n      $('seg').classList.add('hide'); $('pvWrap').classList.add('hide');\n      $('out').classList.remove('hide'); $('out').classList.add('md');\n      $('out').innerHTML = renderMarkdown(lastResult);\n      $('btnOpenHtml').classList.add('hide'); $('btnDlHtml').classList.add('hide');\n    }\n    retr();\n  }\n\n  $('btnRun').onclick = run;\n  $('btnCopy').onclick = () => { navigator.clipboard.writeText(lastResult); toast('已复制'); };\n  $('btnDl').onclick = () => download(lastResult, 'text/markdown', D.name + '-结果.md');\n  $('btnOpenHtml').onclick = async () => {\n    if (!resultHtml) return;\n    if (isExt) {\n      // 扩展内：交给 doc.html + 沙箱页渲染，保证页面里的脚本能执行\n      const { resultDocs = {} } = await chrome.storage.local.get(['resultDocs']);\n      const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);\n      resultDocs[id] = { html: resultHtml, title: D.name + '-页面', date: Date.now() };\n      const keys = Object.keys(resultDocs);\n      if (keys.length > 30) keys.slice(0, keys.length - 30).forEach(k => delete resultDocs[k]);\n      await chrome.storage.local.set({ resultDocs });\n      chrome.tabs.create({ url: chrome.runtime.getURL('doc.html?id=' + id) });\n      return;\n    }\n    window.open(URL.createObjectURL(new Blob([resultHtml], { type: 'text/html' })), '_blank');\n  };\n  $('btnDlHtml').onclick = () => {\n    if (!resultHtml) return;\n    download(resultHtml, 'text/html', D.name + '-页面.html');\n  };\n})();\n","shell":"<!DOCTYPE html>\n<html lang=\"zh-CN\">\n<head>\n<meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\n<title>Skill 工具</title>\n<link rel=\"stylesheet\" href=\"tool.css\">\n</head>\n<body>\n<header>\n  <div class=\"logo\">⚒</div>\n  <div>\n    <h1 id=\"hdTitle\">Skill 工具</h1>\n    <p id=\"hdDesc\"></p>\n  </div>\n  <div class=\"hb\" id=\"hdBadge\">Skill 工坊 · 独立页面</div>\n  <div class=\"langsw\" id=\"langSw\" data-noi18n style=\"margin-left:12px\">\n    <button data-l=\"zh\">中文</button><button data-l=\"en\">EN</button>\n  </div>\n</header>\n<main>\n  <div class=\"col\">\n    <div class=\"card\">\n      <h2>输入参数 <span class=\"tag\" id=\"fldTag\"></span></h2>\n      <form id=\"form\"></form>\n      <div class=\"btnrow\">\n        <button class=\"primary\" id=\"btnRun\" style=\"padding:9px 26px\">▶ 执行</button>\n        <button id=\"btnClear\">清空</button>\n        <button id=\"btnBack\" class=\"hide\">← 回到工坊</button>\n      </div>\n    </div>\n    <div class=\"card\">\n      <h2>⚙ 模型配置</h2>\n      <details open>\n        <summary>OpenAI 兼容接口（只存在本机浏览器）</summary>\n        <label class=\"f\">API 地址（以 /v1 结尾）</label><input id=\"cBase\" placeholder=\"https://api.deepseek.com/v1\">\n        <label class=\"f\">API Key</label><input id=\"cKey\" type=\"password\" placeholder=\"sk-…\">\n        <label class=\"f\">模型名称</label><input id=\"cModel\" placeholder=\"deepseek-chat\">\n      </details>\n    </div>\n  </div>\n  <div class=\"col\">\n    <div class=\"card\">\n      <h2>执行结果 <span class=\"tag\" id=\"stat\">待执行</span></h2>\n      <div class=\"seg hide\" id=\"seg\">\n        <button id=\"segPv\" class=\"on\">🖼 页面预览</button>\n        <button id=\"segCd\">⌨ 源码</button>\n      </div>\n      <div class=\"out pv hide\" id=\"pvWrap\"><iframe id=\"pv\" sandbox=\"allow-scripts allow-forms allow-popups allow-modals\"></iframe></div>\n      <div class=\"out\" id=\"out\">执行结果将在这里流式输出…</div>\n      <div class=\"btnrow\">\n        <button id=\"btnCopy\">复制</button>\n        <button id=\"btnDl\">下载 .md</button>\n        <button id=\"btnOpenHtml\" class=\"hide\">🌐 新标签页打开页面</button>\n        <button id=\"btnDlHtml\" class=\"hide\">下载 .html</button>\n      </div>\n    </div>\n  </div>\n</main>\n<div class=\"toast\" id=\"toast\"></div>\n<script src=\"i18n.js\"><\/script>\n<script src=\"tool.js\"><\/script>\n</body>\n</html>\n","i18n":"/* Skill 工坊 · 中英文双语（i18n）\n   用法：\n     I18N.tr('中文文案')            → 当前语言下的文案（动态消息用）\n     I18N.apply(root)               → 翻译 root 下所有文本节点 / placeholder / title\n     I18N.setLang('zh' | 'en')      → 切换语言（持久化 + 自动重译 + 触发 i18n:change 事件）\n   说明：只翻译界面 chrome；Skill 自己的字段名、提示、LLM 输出属于内容，保持原样。 */\n(function () {\n  const DICT = {\n    /* ===== 独立版专属 ===== */\n    'Skill 工坊 · 独立版': 'Skill Forge · Standalone',\n    '独立版：双击打开即用，无需安装插件 · 上传任意 SKILL.md → 生成界面 → 单独打开为 HTML 页面':\n      'Standalone build: open by double-click, no install needed · Upload any SKILL.md → build a UI → open it as an HTML page',\n    'OpenAI 兼容接口（OpenAI / DeepSeek / Kimi / Ollama 等）· 独立版数据存于浏览器 localStorage':\n      'OpenAI-compatible API (OpenAI / DeepSeek / Kimi / Ollama …) · standalone data is kept in this browser’s localStorage',\n\n    /* ===== 工作台 header / 步骤 ===== */\n    'Skill 工坊 · 工作台': 'Skill Forge · Workbench',\n    '上传任意 SKILL.md → 自动生成适配界面 → 填参数调用 LLM 执行':\n      'Upload any SKILL.md → auto-generate a matching UI → fill it in and run with an LLM',\n    '1 上传 Skill': '1 Upload',\n    '2 生成界面': '2 Build UI',\n    '3 执行': '3 Run',\n\n    /* ===== 横幅 / 提示 ===== */\n    '📥 网页选中内容已导入（来自右键「存入 Skill 工坊」）':\n      '📥 Selected page content imported (via right-click “Save to Skill Forge”)',\n    '解析并存入技能库': 'Parse & save to library',\n    '▶ 网页选中内容已导入（来自右键「执行选中内容」），加载 Skill 后会自动填入':\n      '▶ Selected page content imported (via right-click “Run with Skill”). It will be filled in once a Skill is loaded',\n    '⚠️ 当前环境拦截了浏览器本地存储（常见于内嵌预览面板），数据':\n      '⚠️ This environment blocks browser local storage (common in embedded preview panes). Data is',\n    '仅本次会话有效': 'valid for this session only',\n    '，刷新后会丢失。请用浏览器直接打开本文件，或安装浏览器插件版以永久保存。':\n      ', and will be lost on refresh. Open this file directly in a browser, or install the extension to persist data.',\n\n    /* ===== 技能库 ===== */\n    '📚 技能库': '📚 Skill Library',\n    '还没有保存的 Skill。上传后点「存入技能库」，或在网页中选中 SKILL.md 内容右键保存。':\n      'No saved Skills yet. Upload one and click “Save to library”, or select SKILL.md content on a web page and use the right-click menu.',\n    '还没有保存的 Skill': 'No saved Skills yet',\n    '技能库': 'Skill Library',\n    '💾 存入技能库': '💾 Save to library',\n    '🔄 更新技能库': '🔄 Update library',\n    '查看原文': 'View source',\n\n    /* ===== 上传 ===== */\n    '① 上传 Skill': '① Upload Skill',\n    '支持 .md / 文件夹': '.md / folder supported',\n    '拖拽': 'Drag',\n    '技能压缩包 .zip': 'skill package .zip',\n    '/ 文件夹到这里，或点击选择': '/ folder here, or click to select',\n    '选择文件 / .zip': 'Choose files / .zip',\n    '选择文件夹': 'Choose folder',\n    '试用示例': 'Try a sample',\n    '或直接粘贴': 'or paste directly',\n    '解析粘贴内容': 'Parse pasted content',\n    '把 SKILL.md 完整内容粘贴到这里…': 'Paste the full SKILL.md here…',\n    '⚡ 生成界面': '⚡ Build UI',\n\n    /* ===== 模型配置 ===== */\n    '⚙ 模型配置': '⚙ Model Settings',\n    '存于插件本地存储': 'stored in the extension',\n    '存于本机浏览器': 'stored in this browser',\n    'OpenAI 兼容接口（OpenAI / DeepSeek / Kimi / Ollama 等）':\n      'OpenAI-compatible API (OpenAI / DeepSeek / Kimi / Ollama …)',\n    'OpenAI 兼容接口（只存在本机浏览器）': 'OpenAI-compatible API (kept in this browser only)',\n    'API 地址（Base URL，以 /v1 结尾）': 'API base URL (ends with /v1)',\n    'API 地址（以 /v1 结尾）': 'API base URL (ends with /v1)',\n    '模型名称': 'Model name',\n    '🤖 AI 智能设计界面': '🤖 AI-designed UI',\n    '✏ 手动补字段': '✏ Add fields manually',\n\n    /* ===== 生成的界面 ===== */\n    '② 生成的工具界面': '② Generated Tool UI',\n    '尚未生成': 'not built yet',\n    '上传并解析 Skill 后点击「生成界面」': 'Upload and parse a Skill, then click “Build UI”',\n    '▶ 用 LLM 执行此 Skill': '▶ Run this Skill with an LLM',\n    '清空': 'Clear',\n    '🌐 新标签页打开此界面': '🌐 Open this UI in a new tab',\n    '⬇ 保存为 .html': '⬇ Save as .html',\n    '📥 存入我的页面': '📥 Save to My Pages',\n    '把当前这个界面打包成一个独立 HTML 工具页，在新标签页单独打开':\n      'Package this UI as a standalone HTML tool page and open it in a new tab',\n    '下载为单文件 HTML，可双击打开、发给别人':\n      'Download a single-file HTML that opens on double-click and can be shared',\n    '保存到「我的页面」，下次一键打开直接用': 'Save to My Pages for one-click reuse later',\n\n    /* ===== 执行结果 ===== */\n    '③ 执行结果': '③ Result',\n    '执行结果': 'Result',\n    '待执行': 'Idle',\n    '🖼 页面预览': '🖼 Preview',\n    '⌨ 源码': '⌨ Source',\n    '页面预览': 'Preview',\n    '执行结果将在这里流式输出…': 'The result will stream here…',\n    '复制结果': 'Copy result',\n    '复制': 'Copy',\n    '下载 .md': 'Download .md',\n    '🌐 单独打开为 HTML 页面': '🌐 Open as HTML page',\n    '🌐 新标签页打开页面': '🌐 Open page in a new tab',\n    '下载 .html': 'Download .html',\n    '⬇ 下载 .html': '⬇ Download .html',\n    '🧾 查看源码': '🧾 View source',\n\n    /* ===== 生成历史 ===== */\n    '🗂 生成历史': '🗂 Run History',\n    '还没有生成记录。执行成功后会自动保存（保留最近 50 条），点击任意记录可查看页面、或用当时的 Skill 和参数重新生成。':\n      'No runs yet. Successful runs are saved automatically (last 50). Click a record to view its page, or regenerate with the same Skill and inputs.',\n    '刷新历史': 'Refresh history',\n    '清空全部历史': 'Clear all history',\n    '🔄 重新生成': '🔄 Regenerate',\n    '🌐 新标签页打开': '🌐 Open in a new tab',\n    '⬇ 下载': '⬇ Download',\n    '✕ 关闭': '✕ Close',\n    'HTML': 'HTML',\n    '文本': 'Text',\n\n    /* ===== 我的页面 ===== */\n    '🧩 我的页面': '🧩 My Pages',\n    '还没有保存的页面。把生成的界面或结果里的 HTML 页面「存入我的页面」，下次在这里（或插件弹窗）点击即可直接打开使用。':\n      'No saved pages yet. Store a generated UI or an HTML result into “My Pages”, then open it here (or from the popup) with one click.',\n    '还没有保存的页面': 'No saved pages yet',\n    '刷新列表': 'Refresh list',\n    '工具页': 'Tool',\n    '网页': 'Web page',\n\n    /* ===== 工具页（tool.html） ===== */\n    'Skill 工具': 'Skill Tool',\n    'Skill 工坊 · 独立页面': 'Skill Forge · standalone page',\n    '输入参数': 'Inputs',\n    '▶ 执行': '▶ Run',\n    '← 回到工坊': '← Back to Forge',\n\n    /* ===== 弹窗（popup） ===== */\n    '⚒ Skill 工坊': '⚒ Skill Forge',\n    '上传 Skill → 生成界面 → 调用 LLM 执行': 'Upload a Skill → build a UI → run it with an LLM',\n    '⚒ 打开工作台': '⚒ Open workbench',\n    '⚙ 模型配置 ': '⚙ Model settings ',\n    '小技巧：在网页里': 'Tip: on any web page, ',\n    '选中 SKILL.md 全文': 'select the full SKILL.md',\n    '，右键「存入 Skill 工坊」即可保存；选中任意内容可右键直接送入执行。':\n      ', right-click “Save to Skill Forge”. Select any other content and right-click to run it directly.'\n  };\n\n  /* 不带变量、但由脚本动态填入的文案 */\n  const EXACT_EXTRA = {\n    '执行中…': 'Running…',\n    '正在调用模型…': 'Calling the model…',\n    'AI 正在分析 Skill 并设计界面…': 'AI is analysing the Skill and designing the UI…',\n    '执行失败': 'Run failed',\n    '已复制': 'Copied',\n    '已复制到剪贴板': 'Copied to clipboard',\n    '历史已刷新': 'History refreshed',\n    '页面列表已刷新': 'Page list refreshed',\n    '已清空全部历史': 'All history cleared',\n    '已删除该条记录': 'Record deleted',\n    '已删除该页面': 'Page deleted',\n    '已更新「我的页面」中的同名页面': 'Updated the existing page with the same name',\n    '已存入「我的页面」，下次点击即可直接使用': 'Saved to My Pages — click it next time to use',\n    '已在新标签页打开独立界面': 'Opened the standalone UI in a new tab',\n    '已在新标签页打开独立界面（可直接执行）': 'Opened the standalone UI in a new tab (ready to run)',\n    '已在新标签页打开 HTML 页面': 'Opened the HTML page in a new tab',\n    '已下载单文件界面（为安全未包含 API Key）': 'Single-file UI downloaded (API Key excluded for safety)',\n    '已载入当时的 Skill 与界面，参数已回填，可修改后重新执行':\n      'Loaded that run’s Skill and UI with inputs restored — edit and run again',\n    '已解析并存入技能库，可继续生成界面': 'Parsed and saved to the library — you can build the UI now',\n    '未找到 SKILL.md、Markdown 或 .zip 文件': 'No SKILL.md, Markdown or .zip file found',\n    '压缩包里没有找到 SKILL.md': 'No SKILL.md found in the package',\n    '内容太短，请粘贴完整 SKILL.md': 'Content too short — please paste the full SKILL.md',\n    '未发现 {{占位符}}，已生成通用任务输入框': 'No {{placeholders}} found — a generic task input was created',\n    '浏览器拦截了新标签页，请允许弹窗后重试': 'The browser blocked the new tab — allow pop-ups and retry',\n    '请先上传并解析 Skill': 'Upload and parse a Skill first',\n    '请先填写模型配置': 'Fill in the model settings first',\n    '请先在下方填写模型配置': 'Fill in the model settings below first',\n    '请先生成界面': 'Build the UI first',\n    '技能不存在或已删除': 'This Skill no longer exists',\n    '检测到 HTML 页面，已渲染预览，可单独打开':\n      'HTML page detected — preview rendered, you can open it standalone',\n    '没有找到要展示的界面数据。': 'No UI data to display.',\n    '没有找到页面内容。': 'Page content not found.',\n    '请先填写模型配置（地址 / Key / 模型）': 'Fill in the model settings first (URL / Key / model)',\n    '填写提示': 'Hint',\n    '模型配置：': 'Model settings: ',\n    '已就绪': 'ready',\n    '未完成': 'not configured',\n    '启 用': 'Enable',\n    '启用': 'Enable',\n    '个字段': 'fields',\n    '已解析': 'Parsed',\n    'AI 设计': 'AI-designed',\n    '手动': 'manual',\n    '自动解析': 'auto-parsed',\n    '执行结果将在这里流式输出…': 'The result will stream here…',\n    '常见原因：\\n1. API 地址不正确（应以 /v1 结尾）\\n2. Key 无效或额度不足\\n3. 网络无法访问该接口':\n      'Common causes:\\n1. The API URL is wrong (must end with /v1)\\n2. Invalid Key or quota exhausted\\n3. The endpoint is unreachable from this browser',\n    '常见原因：接口地址需以 /v1 结尾；Key 无效或额度不足；浏览器跨域限制。':\n      'Common causes: the API URL must end with /v1; invalid Key or quota exhausted; browser CORS restrictions.'\n  };\n\n  /* 带变量的动态文案 */\n  const PATTERNS = [\n    [/^(\\d+) 个$/, (m) => m[1]],\n    [/^(\\d+) 条$/, (m) => m[1] + (m[1] === '1' ? ' item' : ' items')],\n    [/^(\\d+) 个字段$/, (m) => m[1] + (m[1] === '1' ? ' field' : ' fields')],\n    [/^Skill 解析完成：(.*)$/, (m) => 'Skill parsed: ' + m[1]],\n    [/^已存入技能库：(.*)$/, (m) => 'Saved to library: ' + m[1]],\n    [/^已删除：(.*)$/, (m) => 'Deleted: ' + m[1]],\n    [/^请填写「(.*)」$/, (m) => 'Please fill in “' + m[1] + '”'],\n    [/^已生成 (\\d+) 个字段的界面$/, (m) => 'Generated a form with ' + m[1] + ' field(s)'],\n    [/^AI 设计了 (\\d+) 个字段的界面$/, (m) => 'AI designed a UI with ' + m[1] + ' field(s)'],\n    [/^多技能包：已批量导入 (\\d+) 个 Skill 到技能库，当前加载第 1 个$/,\n      (m) => 'Multi-skill package: imported ' + m[1] + ' Skills into the library, loading the first one'],\n    [/^压缩包解析完成：(.*)$/, (m) => 'Package parsed: ' + m[1]],\n    [/^含 (\\d+) 个附带文件$/, (m) => m[1] + ' attachment(s)'],\n    [/^完成（输出 (\\d+) 字符(.*)）$/, (m) => 'Done (' + m[1] + ' chars' + m[2] + ')'],\n    [/^完成（(\\d+) 字符）$/, (m) => 'Done (' + m[1] + ' chars)'],\n    [/^正在输出… (\\d+) 字符$/, (m) => 'Streaming… ' + m[1] + ' chars'],\n    [/^正在解压 (.*) …$/, (m) => 'Extracting ' + m[1] + ' …'],\n    [/^执行失败：(.*)$/, (m) => 'Run failed: ' + m[1]],\n    [/^已重命名为「(.*)」$/, (m) => 'Renamed to “' + m[1] + '”'],\n    [/^已添加字段 (.*)$/, (m) => 'Field added: ' + m[1]],\n    [/^AI 生成失败：(.*)$/, (m) => 'AI generation failed: ' + m[1]],\n    [/^压缩包解析失败：(.*)$/, (m) => 'Package parse failed: ' + m[1]],\n    [/^导出失败：(.*)$/, (m) => 'Export failed: ' + m[1]],\n    [/^打开失败：(.*)$/, (m) => 'Open failed: ' + m[1]],\n    [/^历史保存失败：(.*)$/, (m) => 'History save failed: ' + m[1]],\n    [/^页面保存失败：(.*)$/, (m) => 'Page save failed: ' + m[1]],\n    [/^已把网页选中内容填入「(.*)」$/, (m) => 'Filled the selected page content into “' + m[1] + '”'],\n    [/^检测到 HTML 页面，已渲染预览，可单独打开$/, () => 'HTML page detected — preview rendered, you can open it standalone'],\n    [/^已就绪（(.*)）$/, (m) => 'ready (' + m[1] + ')'],\n    [/^已完成（(.*)）$/, (m) => 'Done (' + m[1] + ')'],\n    [/^正文 (\\d+) 字符$/, (m) => m[1] + ' chars in body'],\n    [/^占位符 (\\d+) 个$/, (m) => m[1] + ' placeholder(s)'],\n    [/^(\\d+) 个字段 · (.*)$/, (m) => m[1] + ' fields · ' + (DICT[m[2]] || EXACT_EXTRA[m[2]] || m[2])]\n  ];\n\n  /* 纯中文标点/短词的兜底（tool.js、doc.js 里的少量动态文案） */\n\n  const LANG_KEY = 'skill_forge_lang';\n  const hasLS = (() => { try { localStorage.setItem('__i18n_probe', '1'); localStorage.removeItem('__i18n_probe'); return true; } catch (e) { return false; } })();\n\n  function detect() {\n    try {\n      const s = hasLS ? localStorage.getItem(LANG_KEY) : null;\n      if (s === 'zh' || s === 'en') return s;\n    } catch (e) {}\n    const n = String(navigator.language || 'zh').toLowerCase();\n    return n.indexOf('zh') === 0 ? 'zh' : 'en';\n  }\n\n  let lang = detect();\n\n  function tr(s) {\n    if (lang === 'zh' || typeof s !== 'string') return s;\n    const raw = s;\n    const key = s.trim();\n    if (!key) return s;\n    let out = DICT[key] || EXACT_EXTRA[key] || null;\n    if (out === null) {\n      for (const [re, fn] of PATTERNS) {\n        const m = key.match(re);\n        if (m) { out = fn(m); break; }\n      }\n    }\n    if (out === null) return raw;\n    // 保留原有前后空白\n    const lead = raw.match(/^\\s*/)[0], tail = raw.match(/\\s*$/)[0];\n    return lead + out + tail;\n  }\n\n  const SKIP = '[data-noi18n],script,style';\n\n  function apply(root) {\n    const start = root && root.nodeType === 1 ? root : document.body;\n    if (!start) return;\n    // 文本节点\n    const walker = document.createTreeWalker(start, NodeFilter.SHOW_TEXT, {\n      acceptNode(node) {\n        const p = node.parentElement;\n        if (!p || p.closest(SKIP)) return NodeFilter.FILTER_REJECT;\n        if (!node.nodeValue || !node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;\n        return NodeFilter.FILTER_ACCEPT;\n      }\n    });\n    const nodes = [];\n    while (walker.nextNode()) nodes.push(walker.currentNode);\n    nodes.forEach(node => {\n      if (node.__zh === undefined) node.__zh = node.nodeValue;\n      const next = lang === 'zh' ? node.__zh : tr(node.__zh);\n      if (node.nodeValue !== next) node.nodeValue = next;   // 避免同值写入造成 MutationObserver 循环\n    });\n    // placeholder / title\n    start.querySelectorAll('[placeholder],[title]').forEach(el => {\n      if (el.closest('[data-noi18n]')) return;\n      if (el.hasAttribute('placeholder')) {\n        if (el.__zhPh === undefined) el.__zhPh = el.getAttribute('placeholder');\n        el.setAttribute('placeholder', lang === 'zh' ? el.__zhPh : tr(el.__zhPh));\n      }\n      if (el.hasAttribute('title')) {\n        if (el.__zhTi === undefined) el.__zhTi = el.getAttribute('title');\n        el.setAttribute('title', lang === 'zh' ? el.__zhTi : tr(el.__zhTi));\n      }\n    });\n    document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';\n  }\n\n  function syncSwitchers() {\n    document.querySelectorAll('.langsw button').forEach(b => {\n      b.classList.toggle('on', b.dataset.l === lang);\n    });\n  }\n\n  function setLang(l) {\n    if (l !== 'zh' && l !== 'en') return;\n    lang = l;\n    try { if (hasLS) localStorage.setItem(LANG_KEY, l); } catch (e) {}\n    try { if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) chrome.storage.local.set({ lang: l }); } catch (e) {}\n    apply(document.body);\n    syncSwitchers();\n    document.dispatchEvent(new CustomEvent('i18n:change', { detail: { lang: l } }));\n  }\n\n  /* 注入切换器样式（避免每个页面都改 CSS） */\n  const css = '.langsw{display:inline-flex;border-radius:8px;overflow:hidden;border:1px solid rgba(255,255,255,.45);' +\n    'margin-left:auto;flex-shrink:0;background:rgba(255,255,255,.14)}' +\n    '.langsw button{border:none;background:transparent;color:inherit;font:inherit;font-size:11.5px;' +\n    'padding:4px 10px;cursor:pointer;opacity:.75;border-radius:0}' +\n    '.langsw button.on{background:#fff;color:#2563eb;font-weight:700;opacity:1}' +\n    '.langsw.dark{border-color:#d1d5db;background:#fff}' +\n    '.langsw.dark button{color:#374151}' +\n    '.langsw.dark button.on{background:#2563eb;color:#fff}';\n\n  function boot() {\n    const st = document.createElement('style');\n    st.textContent = css;\n    document.head.appendChild(st);\n    document.querySelectorAll('.langsw').forEach(box => {\n      box.addEventListener('click', e => {\n        const b = e.target.closest('button[data-l]');\n        if (b) setLang(b.dataset.l);\n      });\n    });\n    apply(document.body);\n    syncSwitchers();\n    document.addEventListener('i18n:change', syncSwitchers);\n  }\n\n  window.I18N = { tr, apply, setLang, getLang: () => lang, dict: DICT };\n  window.tr = tr;\n\n  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);\n  else boot();\n})();\n"};</script>
+<script>
+/* Skill 工坊 · 中英文双语（i18n）
+   用法：
+     I18N.tr('中文文案')            → 当前语言下的文案（动态消息用）
+     I18N.apply(root)               → 翻译 root 下所有文本节点 / placeholder / title
+     I18N.setLang('zh' | 'en')      → 切换语言（持久化 + 自动重译 + 触发 i18n:change 事件）
+   说明：只翻译界面 chrome；Skill 自己的字段名、提示、LLM 输出属于内容，保持原样。 */
+(function () {
+  const DICT = {
+    /* ===== 独立版专属 ===== */
+    'Skill 工坊 · 独立版': 'Skill Forge · Standalone',
+    '独立版：双击打开即用，无需安装插件 · 上传任意 SKILL.md → 生成界面 → 单独打开为 HTML 页面':
+      'Standalone build: open by double-click, no install needed · Upload any SKILL.md → build a UI → open it as an HTML page',
+    'OpenAI 兼容接口（OpenAI / DeepSeek / Kimi / Ollama 等）· 独立版数据存于浏览器 localStorage':
+      'OpenAI-compatible API (OpenAI / DeepSeek / Kimi / Ollama …) · standalone data is kept in this browser’s localStorage',
+
+    /* ===== 工作台 header / 步骤 ===== */
+    'Skill 工坊 · 工作台': 'Skill Forge · Workbench',
+    '上传任意 SKILL.md → 自动生成适配界面 → 填参数调用 LLM 执行':
+      'Upload any SKILL.md → auto-generate a matching UI → fill it in and run with an LLM',
+    '1 上传 Skill': '1 Upload',
+    '2 生成界面': '2 Build UI',
+    '3 执行': '3 Run',
+
+    /* ===== 横幅 / 提示 ===== */
+    '📥 网页选中内容已导入（来自右键「存入 Skill 工坊」）':
+      '📥 Selected page content imported (via right-click “Save to Skill Forge”)',
+    '解析并存入技能库': 'Parse & save to library',
+    '▶ 网页选中内容已导入（来自右键「执行选中内容」），加载 Skill 后会自动填入':
+      '▶ Selected page content imported (via right-click “Run with Skill”). It will be filled in once a Skill is loaded',
+    '⚠️ 当前环境拦截了浏览器本地存储（常见于内嵌预览面板），数据':
+      '⚠️ This environment blocks browser local storage (common in embedded preview panes). Data is',
+    '仅本次会话有效': 'valid for this session only',
+    '，刷新后会丢失。请用浏览器直接打开本文件，或安装浏览器插件版以永久保存。':
+      ', and will be lost on refresh. Open this file directly in a browser, or install the extension to persist data.',
+
+    /* ===== 技能库 ===== */
+    '📚 技能库': '📚 Skill Library',
+    '还没有保存的 Skill。上传后点「存入技能库」，或在网页中选中 SKILL.md 内容右键保存。':
+      'No saved Skills yet. Upload one and click “Save to library”, or select SKILL.md content on a web page and use the right-click menu.',
+    '还没有保存的 Skill': 'No saved Skills yet',
+    '技能库': 'Skill Library',
+    '💾 存入技能库': '💾 Save to library',
+    '🔄 更新技能库': '🔄 Update library',
+    '查看原文': 'View source',
+
+    /* ===== 上传 ===== */
+    '① 上传 Skill': '① Upload Skill',
+    '支持 .md / 文件夹': '.md / folder supported',
+    '拖拽': 'Drag',
+    '技能压缩包 .zip': 'skill package .zip',
+    '/ 文件夹到这里，或点击选择': '/ folder here, or click to select',
+    '选择文件 / .zip': 'Choose files / .zip',
+    '选择文件夹': 'Choose folder',
+    '试用示例': 'Try a sample',
+    '或直接粘贴': 'or paste directly',
+    '解析粘贴内容': 'Parse pasted content',
+    '把 SKILL.md 完整内容粘贴到这里…': 'Paste the full SKILL.md here…',
+    '⚡ 生成界面': '⚡ Build UI',
+
+    /* ===== 模型配置 ===== */
+    '⚙ 模型配置': '⚙ Model Settings',
+    '存于插件本地存储': 'stored in the extension',
+    '存于本机浏览器': 'stored in this browser',
+    'OpenAI 兼容接口（OpenAI / DeepSeek / Kimi / Ollama 等）':
+      'OpenAI-compatible API (OpenAI / DeepSeek / Kimi / Ollama …)',
+    'OpenAI 兼容接口（只存在本机浏览器）': 'OpenAI-compatible API (kept in this browser only)',
+    'API 地址（Base URL，以 /v1 结尾）': 'API base URL (ends with /v1)',
+    'API 地址（以 /v1 结尾）': 'API base URL (ends with /v1)',
+    '模型名称': 'Model name',
+    '🤖 AI 智能设计界面': '🤖 AI-designed UI',
+    '✏ 手动补字段': '✏ Add fields manually',
+
+    /* ===== 生成的界面 ===== */
+    '② 生成的工具界面': '② Generated Tool UI',
+    '尚未生成': 'not built yet',
+    '上传并解析 Skill 后点击「生成界面」': 'Upload and parse a Skill, then click “Build UI”',
+    '▶ 用 LLM 执行此 Skill': '▶ Run this Skill with an LLM',
+    '清空': 'Clear',
+    '🌐 新标签页打开此界面': '🌐 Open this UI in a new tab',
+    '⬇ 保存为 .html': '⬇ Save as .html',
+    '📥 存入我的页面': '📥 Save to My Pages',
+    '把当前这个界面打包成一个独立 HTML 工具页，在新标签页单独打开':
+      'Package this UI as a standalone HTML tool page and open it in a new tab',
+    '下载为单文件 HTML，可双击打开、发给别人':
+      'Download a single-file HTML that opens on double-click and can be shared',
+    '保存到「我的页面」，下次一键打开直接用': 'Save to My Pages for one-click reuse later',
+
+    /* ===== 执行结果 ===== */
+    '③ 执行结果': '③ Result',
+    '执行结果': 'Result',
+    '待执行': 'Idle',
+    '🖼 页面预览': '🖼 Preview',
+    '⌨ 源码': '⌨ Source',
+    '页面预览': 'Preview',
+    '执行结果将在这里流式输出…': 'The result will stream here…',
+    '复制结果': 'Copy result',
+    '复制': 'Copy',
+    '下载 .md': 'Download .md',
+    '🌐 单独打开为 HTML 页面': '🌐 Open as HTML page',
+    '🌐 新标签页打开页面': '🌐 Open page in a new tab',
+    '下载 .html': 'Download .html',
+    '⬇ 下载 .html': '⬇ Download .html',
+    '🧾 查看源码': '🧾 View source',
+
+    /* ===== 生成历史 ===== */
+    '🗂 生成历史': '🗂 Run History',
+    '还没有生成记录。执行成功后会自动保存（保留最近 50 条），点击任意记录可查看页面、或用当时的 Skill 和参数重新生成。':
+      'No runs yet. Successful runs are saved automatically (last 50). Click a record to view its page, or regenerate with the same Skill and inputs.',
+    '刷新历史': 'Refresh history',
+    '清空全部历史': 'Clear all history',
+    '🔄 重新生成': '🔄 Regenerate',
+    '🌐 新标签页打开': '🌐 Open in a new tab',
+    '⬇ 下载': '⬇ Download',
+    '✕ 关闭': '✕ Close',
+    'HTML': 'HTML',
+    '文本': 'Text',
+
+    /* ===== 我的页面 ===== */
+    '🧩 我的页面': '🧩 My Pages',
+    '还没有保存的页面。把生成的界面或结果里的 HTML 页面「存入我的页面」，下次在这里（或插件弹窗）点击即可直接打开使用。':
+      'No saved pages yet. Store a generated UI or an HTML result into “My Pages”, then open it here (or from the popup) with one click.',
+    '还没有保存的页面': 'No saved pages yet',
+    '刷新列表': 'Refresh list',
+    '工具页': 'Tool',
+    '网页': 'Web page',
+
+    /* ===== 工具页（tool.html） ===== */
+    'Skill 工具': 'Skill Tool',
+    'Skill 工坊 · 独立页面': 'Skill Forge · standalone page',
+    '输入参数': 'Inputs',
+    '▶ 执行': '▶ Run',
+    '← 回到工坊': '← Back to Forge',
+
+    /* ===== 弹窗（popup） ===== */
+    '⚒ Skill 工坊': '⚒ Skill Forge',
+    '上传 Skill → 生成界面 → 调用 LLM 执行': 'Upload a Skill → build a UI → run it with an LLM',
+    '⚒ 打开工作台': '⚒ Open workbench',
+    '⚙ 模型配置 ': '⚙ Model settings ',
+    '小技巧：在网页里': 'Tip: on any web page, ',
+    '选中 SKILL.md 全文': 'select the full SKILL.md',
+    '，右键「存入 Skill 工坊」即可保存；选中任意内容可右键直接送入执行。':
+      ', right-click “Save to Skill Forge”. Select any other content and right-click to run it directly.'
+  };
+
+  /* 不带变量、但由脚本动态填入的文案 */
+  const EXACT_EXTRA = {
+    '执行中…': 'Running…',
+    '正在调用模型…': 'Calling the model…',
+    'AI 正在分析 Skill 并设计界面…': 'AI is analysing the Skill and designing the UI…',
+    '执行失败': 'Run failed',
+    '已复制': 'Copied',
+    '已复制到剪贴板': 'Copied to clipboard',
+    '历史已刷新': 'History refreshed',
+    '页面列表已刷新': 'Page list refreshed',
+    '已清空全部历史': 'All history cleared',
+    '已删除该条记录': 'Record deleted',
+    '已删除该页面': 'Page deleted',
+    '已更新「我的页面」中的同名页面': 'Updated the existing page with the same name',
+    '已存入「我的页面」，下次点击即可直接使用': 'Saved to My Pages — click it next time to use',
+    '已在新标签页打开独立界面': 'Opened the standalone UI in a new tab',
+    '已在新标签页打开独立界面（可直接执行）': 'Opened the standalone UI in a new tab (ready to run)',
+    '已在新标签页打开 HTML 页面': 'Opened the HTML page in a new tab',
+    '已下载单文件界面（为安全未包含 API Key）': 'Single-file UI downloaded (API Key excluded for safety)',
+    '已载入当时的 Skill 与界面，参数已回填，可修改后重新执行':
+      'Loaded that run’s Skill and UI with inputs restored — edit and run again',
+    '已解析并存入技能库，可继续生成界面': 'Parsed and saved to the library — you can build the UI now',
+    '未找到 SKILL.md、Markdown 或 .zip 文件': 'No SKILL.md, Markdown or .zip file found',
+    '压缩包里没有找到 SKILL.md': 'No SKILL.md found in the package',
+    '内容太短，请粘贴完整 SKILL.md': 'Content too short — please paste the full SKILL.md',
+    '未发现 {{占位符}}，已生成通用任务输入框': 'No {{placeholders}} found — a generic task input was created',
+    '浏览器拦截了新标签页，请允许弹窗后重试': 'The browser blocked the new tab — allow pop-ups and retry',
+    '请先上传并解析 Skill': 'Upload and parse a Skill first',
+    '请先填写模型配置': 'Fill in the model settings first',
+    '请先在下方填写模型配置': 'Fill in the model settings below first',
+    '请先生成界面': 'Build the UI first',
+    '技能不存在或已删除': 'This Skill no longer exists',
+    '检测到 HTML 页面，已渲染预览，可单独打开':
+      'HTML page detected — preview rendered, you can open it standalone',
+    '没有找到要展示的界面数据。': 'No UI data to display.',
+    '没有找到页面内容。': 'Page content not found.',
+    '请先填写模型配置（地址 / Key / 模型）': 'Fill in the model settings first (URL / Key / model)',
+    '填写提示': 'Hint',
+    '模型配置：': 'Model settings: ',
+    '已就绪': 'ready',
+    '未完成': 'not configured',
+    '启 用': 'Enable',
+    '启用': 'Enable',
+    '个字段': 'fields',
+    '已解析': 'Parsed',
+    'AI 设计': 'AI-designed',
+    '手动': 'manual',
+    '自动解析': 'auto-parsed',
+    '执行结果将在这里流式输出…': 'The result will stream here…',
+    '常见原因：\n1. API 地址不正确（应以 /v1 结尾）\n2. Key 无效或额度不足\n3. 网络无法访问该接口':
+      'Common causes:\n1. The API URL is wrong (must end with /v1)\n2. Invalid Key or quota exhausted\n3. The endpoint is unreachable from this browser',
+    '常见原因：接口地址需以 /v1 结尾；Key 无效或额度不足；浏览器跨域限制。':
+      'Common causes: the API URL must end with /v1; invalid Key or quota exhausted; browser CORS restrictions.'
+  };
+
+  /* 带变量的动态文案 */
+  const PATTERNS = [
+    [/^(\d+) 个$/, (m) => m[1]],
+    [/^(\d+) 条$/, (m) => m[1] + (m[1] === '1' ? ' item' : ' items')],
+    [/^(\d+) 个字段$/, (m) => m[1] + (m[1] === '1' ? ' field' : ' fields')],
+    [/^Skill 解析完成：(.*)$/, (m) => 'Skill parsed: ' + m[1]],
+    [/^已存入技能库：(.*)$/, (m) => 'Saved to library: ' + m[1]],
+    [/^已删除：(.*)$/, (m) => 'Deleted: ' + m[1]],
+    [/^请填写「(.*)」$/, (m) => 'Please fill in “' + m[1] + '”'],
+    [/^已生成 (\d+) 个字段的界面$/, (m) => 'Generated a form with ' + m[1] + ' field(s)'],
+    [/^AI 设计了 (\d+) 个字段的界面$/, (m) => 'AI designed a UI with ' + m[1] + ' field(s)'],
+    [/^多技能包：已批量导入 (\d+) 个 Skill 到技能库，当前加载第 1 个$/,
+      (m) => 'Multi-skill package: imported ' + m[1] + ' Skills into the library, loading the first one'],
+    [/^压缩包解析完成：(.*)$/, (m) => 'Package parsed: ' + m[1]],
+    [/^含 (\d+) 个附带文件$/, (m) => m[1] + ' attachment(s)'],
+    [/^完成（输出 (\d+) 字符(.*)）$/, (m) => 'Done (' + m[1] + ' chars' + m[2] + ')'],
+    [/^完成（(\d+) 字符）$/, (m) => 'Done (' + m[1] + ' chars)'],
+    [/^正在输出… (\d+) 字符$/, (m) => 'Streaming… ' + m[1] + ' chars'],
+    [/^正在解压 (.*) …$/, (m) => 'Extracting ' + m[1] + ' …'],
+    [/^执行失败：(.*)$/, (m) => 'Run failed: ' + m[1]],
+    [/^已重命名为「(.*)」$/, (m) => 'Renamed to “' + m[1] + '”'],
+    [/^已添加字段 (.*)$/, (m) => 'Field added: ' + m[1]],
+    [/^AI 生成失败：(.*)$/, (m) => 'AI generation failed: ' + m[1]],
+    [/^压缩包解析失败：(.*)$/, (m) => 'Package parse failed: ' + m[1]],
+    [/^导出失败：(.*)$/, (m) => 'Export failed: ' + m[1]],
+    [/^打开失败：(.*)$/, (m) => 'Open failed: ' + m[1]],
+    [/^历史保存失败：(.*)$/, (m) => 'History save failed: ' + m[1]],
+    [/^页面保存失败：(.*)$/, (m) => 'Page save failed: ' + m[1]],
+    [/^已把网页选中内容填入「(.*)」$/, (m) => 'Filled the selected page content into “' + m[1] + '”'],
+    [/^检测到 HTML 页面，已渲染预览，可单独打开$/, () => 'HTML page detected — preview rendered, you can open it standalone'],
+    [/^已就绪（(.*)）$/, (m) => 'ready (' + m[1] + ')'],
+    [/^已完成（(.*)）$/, (m) => 'Done (' + m[1] + ')'],
+    [/^正文 (\d+) 字符$/, (m) => m[1] + ' chars in body'],
+    [/^占位符 (\d+) 个$/, (m) => m[1] + ' placeholder(s)'],
+    [/^(\d+) 个字段 · (.*)$/, (m) => m[1] + ' fields · ' + (DICT[m[2]] || EXACT_EXTRA[m[2]] || m[2])]
+  ];
+
+  /* 纯中文标点/短词的兜底（tool.js、doc.js 里的少量动态文案） */
+
+  const LANG_KEY = 'skill_forge_lang';
+  const hasLS = (() => { try { localStorage.setItem('__i18n_probe', '1'); localStorage.removeItem('__i18n_probe'); return true; } catch (e) { return false; } })();
+
+  function detect() {
+    try {
+      const s = hasLS ? localStorage.getItem(LANG_KEY) : null;
+      if (s === 'zh' || s === 'en') return s;
+    } catch (e) {}
+    const n = String(navigator.language || 'zh').toLowerCase();
+    return n.indexOf('zh') === 0 ? 'zh' : 'en';
+  }
+
+  let lang = detect();
+
+  function tr(s) {
+    if (lang === 'zh' || typeof s !== 'string') return s;
+    const raw = s;
+    const key = s.trim();
+    if (!key) return s;
+    let out = DICT[key] || EXACT_EXTRA[key] || null;
+    if (out === null) {
+      for (const [re, fn] of PATTERNS) {
+        const m = key.match(re);
+        if (m) { out = fn(m); break; }
+      }
+    }
+    if (out === null) return raw;
+    // 保留原有前后空白
+    const lead = raw.match(/^\s*/)[0], tail = raw.match(/\s*$/)[0];
+    return lead + out + tail;
+  }
+
+  const SKIP = '[data-noi18n],script,style';
+
+  function apply(root) {
+    const start = root && root.nodeType === 1 ? root : document.body;
+    if (!start) return;
+    // 文本节点
+    const walker = document.createTreeWalker(start, NodeFilter.SHOW_TEXT, {
+      acceptNode(node) {
+        const p = node.parentElement;
+        if (!p || p.closest(SKIP)) return NodeFilter.FILTER_REJECT;
+        if (!node.nodeValue || !node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+        return NodeFilter.FILTER_ACCEPT;
+      }
+    });
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    nodes.forEach(node => {
+      if (node.__zh === undefined) node.__zh = node.nodeValue;
+      const next = lang === 'zh' ? node.__zh : tr(node.__zh);
+      if (node.nodeValue !== next) node.nodeValue = next;   // 避免同值写入造成 MutationObserver 循环
+    });
+    // placeholder / title
+    start.querySelectorAll('[placeholder],[title]').forEach(el => {
+      if (el.closest('[data-noi18n]')) return;
+      if (el.hasAttribute('placeholder')) {
+        if (el.__zhPh === undefined) el.__zhPh = el.getAttribute('placeholder');
+        el.setAttribute('placeholder', lang === 'zh' ? el.__zhPh : tr(el.__zhPh));
+      }
+      if (el.hasAttribute('title')) {
+        if (el.__zhTi === undefined) el.__zhTi = el.getAttribute('title');
+        el.setAttribute('title', lang === 'zh' ? el.__zhTi : tr(el.__zhTi));
+      }
+    });
+    document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
+  }
+
+  function syncSwitchers() {
+    document.querySelectorAll('.langsw button').forEach(b => {
+      b.classList.toggle('on', b.dataset.l === lang);
+    });
+  }
+
+  function setLang(l) {
+    if (l !== 'zh' && l !== 'en') return;
+    lang = l;
+    try { if (hasLS) localStorage.setItem(LANG_KEY, l); } catch (e) {}
+    try { if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) chrome.storage.local.set({ lang: l }); } catch (e) {}
+    apply(document.body);
+    syncSwitchers();
+    document.dispatchEvent(new CustomEvent('i18n:change', { detail: { lang: l } }));
+  }
+
+  /* 注入切换器样式（避免每个页面都改 CSS） */
+  const css = '.langsw{display:inline-flex;border-radius:8px;overflow:hidden;border:1px solid rgba(255,255,255,.45);' +
+    'margin-left:auto;flex-shrink:0;background:rgba(255,255,255,.14)}' +
+    '.langsw button{border:none;background:transparent;color:inherit;font:inherit;font-size:11.5px;' +
+    'padding:4px 10px;cursor:pointer;opacity:.75;border-radius:0}' +
+    '.langsw button.on{background:#fff;color:#2563eb;font-weight:700;opacity:1}' +
+    '.langsw.dark{border-color:#d1d5db;background:#fff}' +
+    '.langsw.dark button{color:#374151}' +
+    '.langsw.dark button.on{background:#2563eb;color:#fff}';
+
+  function boot() {
+    const st = document.createElement('style');
+    st.textContent = css;
+    document.head.appendChild(st);
+    document.querySelectorAll('.langsw').forEach(box => {
+      box.addEventListener('click', e => {
+        const b = e.target.closest('button[data-l]');
+        if (b) setLang(b.dataset.l);
+      });
+    });
+    apply(document.body);
+    syncSwitchers();
+    document.addEventListener('i18n:change', syncSwitchers);
+  }
+
+  window.I18N = { tr, apply, setLang, getLang: () => lang, dict: DICT };
+  window.tr = tr;
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
+
+</script>
+<script>
+/* Skill 工坊 · 工作台逻辑（Chrome 扩展版，存储用 chrome.storage.local） */
+let SKILL = null;
+let FIELDS = [];
+let mode = null;
+let running = false;
+let currentSkillId = null;
+
+const $ = id => document.getElementById(id);
+const I18N = window.I18N || { tr: s => s, apply: () => {}, getLang: () => 'zh', setLang: () => {} };
+const toast = msg => { const t = $('toast'); t.textContent = I18N.tr(msg); t.classList.add('show');
+  clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 2400); };
+const retr = () => { try { I18N.apply(document.body); } catch (e) {} };
+const escapeHtml = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+
+function step(n) { ['st1','st2','st3'].forEach((id, i) => $(id).classList.toggle('on', i < n)); }
+
+/* 动态内容（列表/表单/按钮）生成后自动重译；执行流式输出期间跳过，避免卡顿 */
+let _retrTimer = null;
+new MutationObserver(() => {
+  if (running) return;
+  clearTimeout(_retrTimer);
+  _retrTimer = setTimeout(retr, 40);
+}).observe(document.documentElement, { childList: true, subtree: true, characterData: true });
+document.addEventListener('i18n:change', () => { clearTimeout(_retrTimer); _retrTimer = setTimeout(retr, 0); });
+
+/* ===== 存储适配（插件环境用 chrome.storage，普通浏览器预览时降级到 localStorage） ===== */
+const HAS_CHROME = typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local;
+const LS_KEY = 'skill_forge_store';
+/* 探测 localStorage 是否可用（部分预览面板的沙箱 iframe 会拦截，导致静默丢数据） */
+const LS_OK = (() => { try { localStorage.setItem('__sf_probe', '1'); localStorage.removeItem('__sf_probe'); return true; } catch (e) { return false; } })();
+/* localStorage 不可用时降级为内存存储（本次会话有效，不持久） */
+const memStore = {};
+function lsRead() {
+  if (!LS_OK) { try { return JSON.parse(memStore[LS_KEY] || '{}'); } catch (e) { return {}; } }
+  try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}'); } catch (e) { return {}; }
+}
+function lsWrite(obj) {
+  const s = { ...lsRead(), ...obj };
+  const raw = JSON.stringify(s);
+  if (!LS_OK) { memStore[LS_KEY] = raw; return; }
+  localStorage.setItem(LS_KEY, raw);
+}
+const store = HAS_CHROME ? {
+  get: keys => chrome.storage.local.get(keys),
+  set: obj => chrome.storage.local.set(obj)
+} : {
+  get: async keys => { const s = lsRead(); const out = {};
+    (Array.isArray(keys) ? keys : [keys]).forEach(k => { if (k in s) out[k] = s[k]; }); return out; },
+  set: async obj => lsWrite(obj)
+};
+if (!HAS_CHROME) console.info('[Skill 工坊] 未检测到插件环境，已降级使用 localStorage（右键菜单等插件能力不可用）');
+async function getCfg() {
+  const { cfg = {} } = await store.get(['cfg']);
+  return cfg;
+}
+async function saveCfg() {
+  await store.set({ cfg: { base: $('cfgBase').value.trim(), key: $('cfgKey').value.trim(), model: $('cfgModel').value.trim() } });
+}
+
+/* ===== 初始化 ===== */
+(async function init() {
+  const { cfg = {} } = await store.get(['cfg']);
+  if (cfg.base) $('cfgBase').value = cfg.base;
+  if (cfg.key) $('cfgKey').value = cfg.key;
+  if (cfg.model) $('cfgModel').value = cfg.model;
+  if (!HAS_CHROME && !LS_OK) $('storeWarn').classList.remove('hidden');
+  $('histRefresh').onclick = async () => { await renderHistory(); toast('历史已刷新'); };
+  $('histClear').onclick = async () => {
+    if (!confirm('确定清空全部生成历史？此操作不可恢复。')) return;
+    await store.set({ history: [] }); renderHistory(); toast('已清空全部历史');
+  };
+  await renderLibrary();
+  await renderHistory();
+  await renderPages();
+  await handlePending();
+  const q = new URLSearchParams(location.search);
+  if (q.get('load')) await loadFromLibrary(q.get('load'));
+})();
+
+/* ===== 技能库 ===== */
+async function renderLibrary() {
+  const { skills = [] } = await store.get(['skills']);
+  $('libCount').textContent = skills.length ? `${skills.length} 个` : '';
+  const list = $('libList');
+  if (!skills.length) {
+    list.innerHTML = '<p style="font-size:12px;color:var(--text-3)">还没有保存的 Skill。上传后点「存入技能库」，或在网页中选中 SKILL.md 内容右键保存。</p>';
+    return;
+  }
+  list.innerHTML = '';
+  skills.forEach(s => {
+    const d = document.createElement('div');
+    d.className = 'skill-item' + (s.id === currentSkillId ? ' active' : '');
+    d.innerHTML = `<span>📄</span><span class="n">${escapeHtml(s.name)}</span>
+      <span class="d">${new Date(s.date).toLocaleDateString()}</span><span class="del" title="删除">✕</span>`;
+    d.addEventListener('click', e => { if (!e.target.classList.contains('del')) loadFromLibrary(s.id); });
+    d.querySelector('.del').addEventListener('click', async () => {
+      await store.set({ skills: skills.filter(x => x.id !== s.id) });
+      if (currentSkillId === s.id) { currentSkillId = null; SKILL = null; $('skillCard').classList.add('hidden'); }
+      renderLibrary(); toast('已删除：' + s.name);
+    });
+    list.appendChild(d);
+  });
+}
+
+async function saveToLibrary() {
+  if (!SKILL) return;
+  const { skills = [] } = await store.get(['skills']);
+  const id = currentSkillId || uid();
+  const entry = { id, name: SKILL.name, description: SKILL.description, raw: SKILL.raw, refs: SKILL.refs, date: Date.now() };
+  const idx = skills.findIndex(s => s.id === id);
+  if (idx >= 0) skills[idx] = entry; else skills.unshift(entry);
+  await store.set({ skills });
+  currentSkillId = id;
+  renderLibrary();
+  toast('已存入技能库：' + SKILL.name);
+}
+
+async function loadFromLibrary(id) {
+  const { skills = [] } = await store.get(['skills']);
+  const s = skills.find(x => x.id === id);
+  if (!s) { toast('技能不存在或已删除'); return; }
+  currentSkillId = s.id;
+  loadSkill(s.raw, s.refs || [], s.name);
+  $('btnSaveLib').textContent = '🔄 更新技能库';
+}
+
+$('btnSaveLib').onclick = saveToLibrary;
+
+/* ===== 右键导入的待处理内容 ===== */
+async function handlePending() {
+  const { pendingSave, pendingExec } = await store.get(['pendingSave', 'pendingExec']);
+  if (pendingSave) {
+    $('bannerSave').classList.add('show');
+    $('saveSrc').textContent = pendingSave.url ? '来源：' + pendingSave.url.slice(0, 60) : '';
+    $('btnSavePending').onclick = async () => {
+      loadSkill(pendingSave.text, [], '网页导入');
+      await saveToLibrary();
+      if (HAS_CHROME) await chrome.storage.local.remove('pendingSave');
+      $('bannerSave').classList.remove('show');
+      toast('已解析并存入技能库，可继续生成界面');
+    };
+  }
+  if (pendingExec) {
+    $('bannerExec').classList.add('show');
+    window._pendingExec = pendingExec.text;
+    setTimeout(() => $('bannerExec').classList.remove('show'), 8000);
+  }
+}
+
+/* ===== 上传与解析 ===== */
+$('drop').onclick = () => $('fileInput').click();
+$('btnFiles').onclick = () => $('fileInput').click();
+$('btnDir').onclick = () => $('dirInput').click();
+$('fileInput').onchange = e => handleFiles(e.target.files);
+$('dirInput').onchange = e => handleFiles(e.target.files);
+['dragover', 'dragleave', 'drop'].forEach(ev => $('drop').addEventListener(ev, e => {
+  e.preventDefault(); $('drop').classList.toggle('over', ev === 'dragover');
+  if (ev === 'drop') handleFiles(e.dataTransfer.files);
+}));
+
+async function handleFiles(list) {
+  const files = [...list]; if (!files.length) return;
+  let skillFile = files.find(f => /(^|\/)SKILL\.md$/i.test(f.name)) || files.find(f => /\.(md|markdown|txt)$/i.test(f.name));
+  if (!skillFile) skillFile = files.find(f => /\.zip$/i.test(f.name));
+  if (!skillFile) { toast('未找到 SKILL.md、Markdown 或 .zip 文件'); return; }
+  if (/\.zip$/i.test(skillFile.name)) { await handleZip(skillFile); return; }
+  const raw = await skillFile.text();
+  const refs = [];
+  for (const f of files) {
+    if (f === skillFile || !/\.(md|markdown|txt|py|js|ts|json|csv|sh)$/i.test(f.name)) continue;
+    if (f.size > 200 * 1024) { refs.push({ name: f.name.replace(/^.*\//, ''), content: '', skipped: true }); continue; }
+    refs.push({ name: f.name.replace(/^.*\//, ''), content: await f.text() });
+  }
+  currentSkillId = null;
+  loadSkill(raw, refs, skillFile.name.replace(/^.*\//, ''));
+}
+
+/* ===== 技能压缩包（.zip）支持 ===== */
+const ZIP_TEXT_EXT = /\.(md|markdown|txt|py|js|ts|jsx|tsx|json|csv|sh|yaml|yml|html|css)$/i;
+const MAX_ENTRY = 512 * 1024; // 单文件解压上限 512KB
+
+async function handleZip(file) {
+  setRun(true, '正在解压 ' + file.name + ' …');
+  try {
+    const entries = await readZip(file);
+    const names = Object.keys(entries).filter(n => !n.startsWith('__MACOSX'));
+    const skillPaths = names.filter(n => n.split('/').pop().toLowerCase() === 'skill.md');
+    if (!skillPaths.length) { toast('压缩包里没有找到 SKILL.md'); return; }
+    const dec = u8 => new TextDecoder().decode(u8);
+    const roots = [...new Set(skillPaths.map(p => p.includes('/') ? p.slice(0, p.lastIndexOf('/')) : ''))];
+
+    const skills = skillPaths.map(sp => {
+      const root = sp.includes('/') ? sp.slice(0, sp.lastIndexOf('/')) : '';
+      const otherRoots = roots.filter(r => r !== root);
+      const refs = [];
+      for (const n of names) {
+        if (n === sp) continue;
+        if (skillPaths.includes(n)) continue;
+        if (root ? !n.startsWith(root + '/') : otherRoots.some(r => n.startsWith(r + '/'))) continue;
+        const base = n.slice(root ? root.length + 1 : 0);
+        const u8 = entries[n];
+        if (u8.length > MAX_ENTRY || !ZIP_TEXT_EXT.test(n)) {
+          refs.push({ name: base, content: '', skipped: true }); continue;
+        }
+        refs.push({ name: base, content: dec(u8) });
+      }
+      return { raw: dec(entries[sp]), refs, fallback: root || file.name.replace(/\.zip$/i, '') };
+    });
+
+    if (skills.length === 1) {
+      const s = skills[0];
+      currentSkillId = null;
+      loadSkill(s.raw, s.refs, s.fallback);
+      toast('压缩包解析完成：' + (s.refs.length ? `含 ${s.refs.length} 个附带文件` : '单文件技能'));
+    } else {
+      // 多技能包：批量入库
+      const { existing = [] } = await store.get(['skills']);
+      const now = Date.now();
+      skills.forEach((s, i) => {
+        const { meta, body } = parseFrontmatter(s.raw);
+        existing.unshift({
+          id: uid(), name: meta.name || s.fallback || ('技能 ' + (i + 1)),
+          description: meta.description || '', raw: s.raw, refs: s.refs, date: now + i
+        });
+      });
+      await store.set({ skills: existing });
+      currentSkillId = null;
+      loadSkill(skills[0].raw, skills[0].refs, skills[0].fallback);
+      toast(`多技能包：已批量导入 ${skills.length} 个 Skill 到技能库，当前加载第 1 个`);
+    }
+  } catch (e) { toast('压缩包解析失败：' + e.message); }
+  setRun(false);
+}
+
+/* 轻量 ZIP 读取：解析中央目录，store(0) 直取，deflate(8) 用浏览器原生 DecompressionStream */
+async function readZip(file) {
+  const buf = new Uint8Array(await file.arrayBuffer());
+  const dv = new DataView(buf.buffer);
+  let eocd = -1;
+  for (let i = buf.length - 22; i >= Math.max(0, buf.length - 22 - 65536); i--) {
+    if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+  }
+  if (eocd < 0) throw new Error('不是有效的 ZIP 文件');
+  const count = dv.getUint16(eocd + 10, true);
+  let off = dv.getUint32(eocd + 16, true);
+  const entries = {};
+  for (let i = 0; i < count; i++) {
+    if (off + 46 > buf.length || dv.getUint32(off, true) !== 0x02014b50) break;
+    const method = dv.getUint16(off + 10, true);
+    const compSize = dv.getUint32(off + 20, true);
+    const nameLen = dv.getUint16(off + 28, true);
+    const extraLen = dv.getUint16(off + 30, true);
+    const cmtLen = dv.getUint16(off + 32, true);
+    const lho = dv.getUint32(off + 42, true);
+    const name = new TextDecoder().decode(buf.slice(off + 46, off + 46 + nameLen));
+    off += 46 + nameLen + extraLen + cmtLen;
+    if (name.endsWith('/') || lho + 30 > buf.length) continue; // 目录项跳过
+    const lnameLen = dv.getUint16(lho + 26, true);
+    const lextraLen = dv.getUint16(lho + 28, true);
+    const dataStart = lho + 30 + lnameLen + lextraLen;
+    const data = buf.slice(dataStart, dataStart + compSize);
+    if (method === 0) entries[name] = data;
+    else if (method === 8) entries[name] = await inflateRaw(data);
+    else console.warn('[Skill 工坊] 跳过不支持的压缩项：' + name);
+  }
+  return entries;
+}
+
+async function inflateRaw(u8) {
+  const stream = new Blob([u8]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+$('btnParsePaste').onclick = () => {
+  const t = $('pasteArea').value.trim();
+  if (t.length < 20) { toast('内容太短，请粘贴完整 SKILL.md'); return; }
+  currentSkillId = null;
+  loadSkill(t, [], '粘贴内容');
+};
+
+$('btnDemo').onclick = () => { currentSkillId = null; loadSkill(DEMO_SKILL, [], '示例：周报生成器'); };
+
+/* ===== 解析器 ===== */
+function parseFrontmatter(raw) {
+  const m = raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
+  if (!m) return { meta: {}, body: raw };
+  const meta = {};
+  m[1].split(/\r?\n/).forEach(line => {
+    const kv = line.match(/^([A-Za-z_-]+)\s*:\s*(.*)$/);
+    if (kv) meta[kv[1].trim()] = kv[2].trim().replace(/^["']|["']$/g, '');
+  });
+  return { meta, body: m[2] };
+}
+function extractPlaceholders(body) {
+  const found = new Map();
+  const re1 = /\{\{\s*([A-Za-z0-9_\u4e00-\u9fa5:-]+)\s*(?::\s*([^}]+))?\}\}/g; let m;
+  while ((m = re1.exec(body))) found.set(m[1], (m[2] || '').trim());
+  const sec = body.match(/#{2,3}\s*(输入参数|参数|必填|Required Inputs?|Inputs?|Variables?)[^\n]*\n([\s\S]*?)(?=\n#{2,3}\s|\n---|$)/i);
+  if (sec) {
+    sec[2].split('\n').forEach(l => {
+      const li = l.match(/^\s*[-*]\s*`?([A-Za-z0-9_\u4e00-\u9fa5]+)`?\s*[:：(]([^)：\n]*)/);
+      if (li && !found.has(li[1])) found.set(li[1], li[2].trim());
+    });
+  }
+  return [...found.entries()].map(([key, hint]) => ({ key, hint }));
+}
+function inferType(key, hint) {
+  const t = key + (hint || '');
+  if (/风格|类型|语言|模式|tone|style|format|level|语气/i.test(t)) return 'select';
+  if (/是否|开关|启用|布尔|enable/i.test(t)) return 'checkbox';
+  if (/日期|时间|date\b|time\b/i.test(t)) return 'date';
+  if (/正文|内容|文本|描述|要求|背景|prompt|content|text|desc|需求|说明|记录|素材|大纲|work|issue|plan|notes|列表/i.test(t)) return 'textarea';
+  if (/数量|次数|个数|count|number|num/i.test(t)) return 'number';
+  return 'text';
+}
+const guessLabel = key => key.replace(/[_:-]+/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2').trim() || key;
+
+function loadSkill(raw, refs, srcName) {
+  const { meta, body } = parseFrontmatter(raw);
+  const placeholders = extractPlaceholders(body);
+  SKILL = { name: meta.name || srcName.replace(/\.(md|txt)$/i, '') || '未命名 Skill',
+    description: meta.description || '', body, raw, refs: refs || [], placeholders };
+  $('skillCard').classList.remove('hidden');
+  $('skName').textContent = SKILL.name;
+  $('skDesc').textContent = SKILL.description || '(无 description，将使用正文作为指令)';
+  $('skMeta').innerHTML = '';
+  [I18N.tr(`正文 ${body.length} 字符`), I18N.tr(`占位符 ${placeholders.length} 个`)].forEach(c => {
+    const s = document.createElement('span'); s.className = 'chip'; s.textContent = c; $('skMeta').appendChild(s); });
+  $('skMode').textContent = I18N.tr('已解析'); $('skMode').className = 'mode-badge mode-heuristic';
+  $('btnSaveLib').textContent = currentSkillId ? '🔄 更新技能库' : '💾 存入技能库';
+  step(2); toast('Skill 解析完成：' + SKILL.name);
+}
+
+$('btnViewRaw').onclick = () => {
+  const w = window.open('', '_blank');
+  w.document.write('<pre style="white-space:pre-wrap;padding:24px;font-size:13px">' + escapeHtml(SKILL.raw) + '</pre>');
+  w.document.title = SKILL.name;
+};
+
+/* ===== 界面生成 ===== */
+function renderForm() {
+  const area = $('formArea'); area.className = ''; area.style.cssText = ''; area.innerHTML = '';
+  if (!FIELDS.length) { area.innerHTML = '<p style="color:var(--text-3)">暂无字段。</p>'; return; }
+  FIELDS.forEach(f => {
+    const d = document.createElement('div'); d.className = 'field';
+    let ctrl;
+    if (f.type === 'select') {
+      ctrl = document.createElement('select');
+      (f.options && f.options.length ? f.options : ['默认']).forEach(o => {
+        const op = document.createElement('option'); op.value = op.textContent = o; ctrl.appendChild(op); });
+    } else if (f.type === 'textarea') {
+      ctrl = document.createElement('textarea'); ctrl.style.minHeight = '80px';
+    } else if (f.type === 'checkbox') {
+      ctrl = document.createElement('input'); ctrl.type = 'checkbox'; ctrl.style.width = 'auto';
+      const wrap = document.createElement('label');
+      wrap.style.cssText = 'display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text-2);cursor:pointer';
+      wrap.appendChild(ctrl);
+      wrap.appendChild(document.createTextNode('启用'));
+      ctrl.dataset.key = f.key;
+      d.innerHTML = `<div class="fl">${escapeHtml(f.label || f.key)}
+        <span class="fk">${escapeHtml(f.key)}</span></div>` +
+        (f.hint ? `<div class="hint">${escapeHtml(f.hint)}</div>` : '');
+      d.appendChild(wrap); area.appendChild(d);
+      return;
+    } else {
+      ctrl = document.createElement('input');
+      ctrl.type = { number: 'number', date: 'date', email: 'email', url: 'url' }[f.type] || 'text';
+    }
+    if (f.placeholder) ctrl.placeholder = f.placeholder;
+    ctrl.dataset.key = f.key;
+    d.innerHTML = `<div class="fl">${escapeHtml(f.label || f.key)} <span class="req">必填</span>
+      <span class="fk">${escapeHtml(f.key)}</span></div>` +
+      (f.hint ? `<div class="hint">${escapeHtml(f.hint)}</div>` : '');
+    d.appendChild(ctrl); area.appendChild(d);
+  });
+  // 右键导入的执行内容自动填入
+  if (window._pendingExec) {
+    const firstText = FIELDS.find(f => f.type === 'textarea') || FIELDS[0];
+    if (firstText) {
+      const el = document.querySelector(`[data-key="${firstText.key}"]`);
+      if (el && !el.value.trim()) {
+        el.value = window._pendingExec;
+        toast(`已把网页选中内容填入「${firstText.label || firstText.key}」`);
+      }
+    }
+    delete window._pendingExec;
+  }
+  $('btnRun').disabled = false; $('btnReset').disabled = false;
+  $('btnOpenPage').disabled = false; $('btnDlPage').disabled = false; $('btnSavePage').disabled = false;
+  $('formTag').textContent = I18N.tr(`${FIELDS.length} 个字段 · ${mode === 'ai' ? 'AI 设计' : mode === 'manual' ? '手动' : '自动解析'}`);
+  $('formTag').className = 'tag mode-badge ' + (mode === 'ai' ? 'mode-ai' : 'mode-heuristic');
+  step(3);
+}
+
+$('btnAutoUI').onclick = () => {
+  if (!SKILL) return;
+  mode = 'heuristic';
+  FIELDS = SKILL.placeholders.map(p => ({
+    key: p.key, label: guessLabel(p.key), type: inferType(p.key, p.hint),
+    hint: p.hint || '', options: inferType(p.key, p.hint) === 'select' ? ['正式', '轻松', '简洁', '详细'] : null }));
+  if (!FIELDS.length) {
+    FIELDS = [{ key: 'task', label: '任务描述', type: 'textarea', hint: '告诉 AI 这次要执行什么' }];
+    toast('未发现 {{占位符}}，已生成通用任务输入框');
+  }
+  renderForm(); toast(`已生成 ${FIELDS.length} 个字段的界面`);
+};
+
+$('btnManualUI').onclick = () => {
+  const key = prompt('字段名（英文 key）：'); if (!key) return;
+  const label = prompt('显示名称：', guessLabel(key)) || key;
+  const type = prompt('类型：text / textarea / number / select', 'text'); if (!type) return;
+  let options = null; if (type === 'select') options = (prompt('选项，逗号分隔：', 'A,B,C') || 'A,B,C').split(',').map(s => s.trim());
+  mode = FIELDS.length ? mode : 'manual';
+  FIELDS.push({ key, label, type, hint: '', options }); renderForm(); toast('已添加字段 ' + key);
+};
+
+$('btnAIGen').onclick = async () => {
+  if (!SKILL) { toast('请先上传并解析 Skill'); return; }
+  const c = await getCfg();
+  if (!c.base || !c.key || !c.model) { toast('请先在下方填写模型配置'); return; }
+  const refsText = SKILL.refs.filter(r => !r.skipped && r.content)
+    .map(r => `\n--- 附件 ${r.name} ---\n${r.content.slice(0, 6000)}`).join('');
+  const sys = '你是 UI 设计师。用户会给一个 AI Skill 的完整定义，请为它设计一个填写表单界面。' +
+    '只输出 JSON 数组，不要任何其他文字。每个元素：{"key":"英文变量名","label":"中文显示名","type":"text|textarea|number|select|date|checkbox","hint":"一句中文填写提示","options":["select 时的选项"]}。' +
+    '字段 2-6 个，覆盖该 Skill 运行所需的全部输入；按语义选择类型：长文本用 textarea，有限选项用 select，日期用 date，是/否开关用 checkbox，数量用 number。';
+  const user = `Skill 名称：${SKILL.name}\n描述：${SKILL.description}\n\n正文：\n${SKILL.body.slice(0, 8000)}${refsText}`;
+  setRun(true, 'AI 正在分析 Skill 并设计界面…');
+  try {
+    const text = await chat([{ role: 'system', content: sys }, { role: 'user', content: user }], false, c);
+    const j = JSON.parse(text.replace(/^```(json)?|```$/g, '').trim());
+    if (!Array.isArray(j) || !j.length) throw new Error('返回格式异常');
+    FIELDS = j.map(f => ({ key: f.key, label: f.label || f.key, type: f.type || 'text', hint: f.hint || '', options: f.options || null }));
+    mode = 'ai';
+    $('skMode').textContent = I18N.tr('AI 设计'); $('skMode').className = 'mode-badge mode-ai';
+    renderForm(); toast(`AI 设计了 ${FIELDS.length} 个字段的界面`);
+  } catch (e) { toast('AI 生成失败：' + e.message); }
+  setRun(false);
+};
+
+/* ===== 执行 ===== */
+$('btnRun').onclick = run;
+$('btnReset').onclick = () => {
+  FIELDS = []; renderForm();
+  $('formArea').className = 'empty';
+  $('formArea').innerHTML = '<div class="big">🧩</div>上传并解析 Skill 后点击「生成界面」';
+  $('formTag').textContent = I18N.tr('尚未生成'); $('btnRun').disabled = true; $('btnReset').disabled = true;
+  $('output').removeAttribute('data-noi18n');
+  $('output').textContent = I18N.tr('执行结果将在这里流式输出…');
+  $('btnOpenPage').disabled = true; $('btnDlPage').disabled = true; $('btnSavePage').disabled = true;
+};
+
+async function run() {
+  if (running) return;
+  const c = await getCfg();
+  if (!c.base || !c.key || !c.model) { toast('请先填写模型配置'); return; }
+  const values = {};
+  for (const f of FIELDS) {
+    const el = document.querySelector(`[data-key="${f.key}"]`);
+    if (f.type === 'checkbox') { values[f.key] = el && el.checked ? '是' : '否'; continue; }
+    const v = (el ? el.value.trim() : '');
+    if (!v) { toast(`请填写「${f.label || f.key}」`); el && el.focus(); return; }
+    values[f.key] = v;
+  }
+  window._lastValues = values;
+  const refText = SKILL.refs.filter(r => !r.skipped && r.content)
+    .map(r => `\n\n### 参考文件：${r.name}\n${r.content.slice(0, 8000)}`).join('');
+  const sys = `你是一个执行「Skill」的助手。\n# Skill 名称\n${SKILL.name}\n${SKILL.description ? '# 描述\n' + SKILL.description + '\n' : ''}# 完整指令\n${SKILL.body}${refText}`;
+  const user = '请根据上述 Skill 指令处理以下输入：\n' +
+    Object.entries(values).map(([k, v]) => `【${k}】\n${v}`).join('\n\n') +
+    '\n\n直接输出 Skill 要求的最终结果，不要解释执行过程。';
+  setRun(true, '正在调用模型…'); $('output').classList.remove('md'); $('output').textContent = '';
+  $('output').setAttribute('data-noi18n', '1');
+  try {
+    const used = await chat([{ role: 'system', content: sys }, { role: 'user', content: user }], true, c);
+    setRun(false, 'ok', `完成（输出 ${lastResult.length} 字符${used ? ' · ' + used + ' tokens' : ''}）`);
+    $('btnCopy').disabled = false; $('btnDownload').disabled = false;
+    updateResultActions();
+    // 非 HTML 结果用 markdown 渲染（表格/代码块/列表）
+    if (!resultHtml) { $('output').classList.add('md'); $('output').innerHTML = renderMarkdown(lastResult); }
+    await saveHistory();
+  } catch (e) {
+    setRun(false, 'err', '执行失败：' + e.message);
+    $('output').textContent = '❌ ' + e.message + '\n\n' + I18N.tr('常见原因：\n1. API 地址不正确（应以 /v1 结尾）\n2. Key 无效或额度不足\n3. 网络无法访问该接口');
+  }
+}
+
+function setRun(on, text, cls, extra) {
+  running = on; $('btnRun').disabled = on;
+  $('runDot').className = 'dot ' + (on ? 'run' : cls === 'ok' ? 'ok' : cls === 'err' ? 'err' : '');
+  $('runStatus').textContent = I18N.tr(text || (on ? '执行中…' : '待执行'));
+  if (on) $('tokenInfo').textContent = ''; else if (extra) $('tokenInfo').textContent = extra;
+}
+
+/* OpenAI 兼容 chat，SSE 流式 */
+let lastResult = '';
+async function chat(messages, stream, c) {
+  const res = await fetch(c.base.replace(/\/+$/, '') + '/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + c.key },
+    body: JSON.stringify({ model: c.model, messages, stream: !!stream, temperature: 0.7 })
+  });
+  if (!res.ok) {
+    let d = ''; try { d = (await res.json()).error?.message || ''; } catch (e) {}
+    throw new Error(`HTTP ${res.status} ${d}`);
+  }
+  if (!stream) { const j = await res.json(); return j.choices[0].message.content.trim(); }
+  const reader = res.body.getReader(); const dec = new TextDecoder(); let buf = '', out = '', used = null;
+  while (true) {
+    const { done, value } = await reader.read(); if (done) break;
+    buf += dec.decode(value, { stream: true });
+    const lines = buf.split('\n'); buf = lines.pop();
+    for (const line of lines) {
+      const s = line.trim(); if (!s.startsWith('data:')) continue;
+      const payload = s.slice(5).trim(); if (payload === '[DONE]') continue;
+      try {
+        const j = JSON.parse(payload);
+        const delta = j.choices?.[0]?.delta?.content;
+        if (delta) { out += delta; $('output').textContent = out;
+          $('runStatus').textContent = '正在输出… ' + out.length + ' 字符'; }
+        if (j.usage) used = j.usage.total_tokens;
+      } catch (e) {}
+    }
+  }
+  lastResult = out;
+  return used;
+}
+
+$('btnCopy').onclick = () => { navigator.clipboard.writeText($('output').textContent); toast('已复制'); };
+$('btnDownload').onclick = () => {
+  const blob = new Blob([$('output').textContent], { type: 'text/markdown' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = (SKILL ? SKILL.name : 'result') + '-结果.md'; a.click();
+};
+
+/* ===== 结果 HTML 单独打开/下载 ===== */
+let resultHtml = null, htmlUrl = null;
+
+/* 把 HTML 片段补全成可独立打开的完整文档 */
+function wrapHtmlFragment(frag) {
+  return '<!DOCTYPE html>\n<html lang="zh-CN">\n<head>\n<meta charset="UTF-8">\n' +
+    '<meta name="viewport" content="width=device-width,initial-scale=1">\n</head>\n<body>\n' +
+    frag + '\n</body>\n</html>';
+}
+
+/* 宽松识别：完整文档 / ```html 代码块 / 明显的 HTML 片段 都算 */
+function extractHtml(text) {
+  if (!text || typeof text !== 'string') return null;
+  const fences = [...text.matchAll(/```(?:html|htm)?\s*\n([\s\S]*?)```/gi)].map(m => m[1]);
+  let cand = fences.find(f => /<html[\s>]|<!DOCTYPE\s+html|<body[\s>]|<div[\s>]|<section[\s>]|<svg[\s>]/i.test(f)) || null;
+  if (!cand) {
+    const i = text.search(/<!DOCTYPE\s+html|<html[\s>]/i);
+    if (i >= 0) cand = text.slice(i).replace(/```[\s\S]*$/, '');
+    else {
+      const hits = text.match(/<(div|section|main|header|footer|style|table|svg|h1|h2|button|canvas|body)\b/gi) || [];
+      const strong = /<style[\s>]|<svg[\s>]|<canvas[\s>]|<script[\s>]|<table[\s>]/i.test(text);
+      if (hits.length >= 3 && (text.length > 120 || strong)) cand = text;
+    }
+  }
+  if (!cand) return null;
+  cand = cand.trim().replace(/^```[a-z]*\s*/i, '').replace(/```$/, '').trim();
+  if (!/<html[\s>]|<!DOCTYPE\s+html/i.test(cand)) cand = wrapHtmlFragment(cand);
+  return cand;
+}
+
+function setResultSeg(preview) {
+  $('segPreview').classList.toggle('on', preview);
+  $('segCode').classList.toggle('on', !preview);
+  $('outPreviewWrap').classList.toggle('hidden', !preview);
+  $('output').classList.toggle('hidden', preview);
+}
+
+function updateResultActions() {
+  resultHtml = extractHtml(lastResult || $('output').textContent || '');
+  ['btnOpenHtml', 'btnDlHtml', 'segBar', 'btnSaveHtmlPage'].forEach(id => $(id).classList.toggle('hidden', !resultHtml));
+  if (resultHtml) {
+    $('outPreview').srcdoc = resultHtml;
+    setResultSeg(true);
+    toast('检测到 HTML 页面，已渲染预览，可单独打开');
+  } else {
+    $('outPreviewWrap').classList.add('hidden');
+    $('output').classList.remove('hidden');
+  }
+}
+$('segPreview').onclick = () => setResultSeg(true);
+$('segCode').onclick = () => setResultSeg(false);
+/* 打开一个生成出来的 HTML 页面：
+   扩展内走 doc.html + 沙箱页（blob 会继承扩展 CSP，页面里的脚本会被拦）；无插件环境直接用 blob */
+async function openHtmlPage(html, title) {
+  if (!html) return;
+  if (HAS_CHROME && chrome.tabs) {
+    const { resultDocs = {} } = await chrome.storage.local.get(['resultDocs']);
+    const id = uid();
+    resultDocs[id] = { html, title: title || '页面', date: Date.now() };
+    const keys = Object.keys(resultDocs);
+    if (keys.length > 30) keys.slice(0, keys.length - 30).forEach(k => delete resultDocs[k]);
+    await chrome.storage.local.set({ resultDocs });
+    chrome.tabs.create({ url: chrome.runtime.getURL('doc.html?id=' + id) });
+    return;
+  }
+  if (htmlUrl) URL.revokeObjectURL(htmlUrl);
+  htmlUrl = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+  window.open(htmlUrl, '_blank');
+}
+
+$('btnOpenHtml').onclick = async () => {
+  if (!resultHtml) return;
+  await openHtmlPage(resultHtml, (SKILL ? SKILL.name : '页面') + '-页面');
+  toast('已在新标签页打开 HTML 页面');
+};
+$('btnDlHtml').onclick = () => {
+  if (!resultHtml) return;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([resultHtml], { type: 'text/html' }));
+  a.download = (SKILL ? SKILL.name : 'result') + '-页面.html'; a.click();
+};
+
+/* ===== 独立工具页：界面 → 可单独打开的 HTML 页面 ===== */
+/* 资源来源：扩展内 fetch(tool.css / tool.js / tool.html)；独立版由构建脚本注入 window.__TOOL_ASSETS */
+async function getToolAssets() {
+  if (window.__TOOL_ASSETS) return window.__TOOL_ASSETS;
+  const base = (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL) ? chrome.runtime.getURL('') : '';
+  const get = p => fetch(base + p).then(r => r.text());
+  const [css, js, shell, i18n] = await Promise.all([get('tool.css'), get('tool.js'), get('tool.html'), get('i18n.js')]);
+  window.__TOOL_ASSETS = { css, js, shell, i18n };
+  return window.__TOOL_ASSETS;
+}
+
+function toolPayload(skill, fields, cfg, includeKey) {
+  return JSON.stringify({
+    name: skill.name,
+    description: skill.description || '',
+    body: skill.body || '',
+    refs: (skill.refs || []).filter(r => !r.skipped && r.content)
+      .map(r => ({ name: r.name, content: String(r.content).slice(0, 8000) })),
+    fields: fields.map(f => ({ key: f.key, label: f.label || f.key, type: f.type || 'text', hint: f.hint || '', options: f.options || null })),
+    cfg: { base: cfg.base || '', model: cfg.model || '', key: includeKey ? (cfg.key || '') : '' }
+  }).replace(/</g, '\\u003c');
+}
+
+/* 把 tool.html 的 body 抽出来（保证单文件版与扩展页完全同构） */
+function toolBody(shell) {
+  const s = shell.indexOf('<body>');
+  let e = shell.indexOf('<script src="i18n.js">');
+  if (e < 0) e = shell.indexOf('<script src="tool.js">');
+  return (s >= 0 && e > s ? shell.slice(s + 6, e) : '').trim();
+}
+
+/* 生成可直接双击打开的单文件页面 */
+async function buildToolPage(skill, fields, cfg, includeKey) {
+  const { css, js, shell, i18n } = await getToolAssets();
+  const payload = toolPayload(skill, fields, cfg, includeKey);
+  const safeJs = String(js).replace(/<\/script/gi, '<\\/script');
+  const safeI18n = String(i18n || '').replace(/<\/script/gi, '<\\/script');
+  const lang = (window.I18N && I18N.getLang()) || 'zh';
+  return '<!DOCTYPE html>\n<html lang="' + (lang === 'zh' ? 'zh-CN' : 'en') + '">\n<head>\n<meta charset="UTF-8">\n' +
+    '<meta name="viewport" content="width=device-width,initial-scale=1">\n' +
+    '<title>' + escapeHtml(skill.name) + ' · Skill 工具</title>\n<style>\n' + css + '\n</style>\n</head>\n' +
+    toolBody(shell) +
+    '\n<script>window.SKILL_PAYLOAD = ' + payload + ';</' + 'script>\n' +
+    '<script>\n' + safeI18n + '\n</' + 'script>\n' +
+    '<script>\n' + safeJs + '\n</' + 'script>\n</body>\n</html>\n';
+}
+
+/* 在新标签页打开当前界面 */
+$('btnOpenPage').onclick = async () => {
+  if (!SKILL || !FIELDS.length) { toast('请先生成界面'); return; }
+  const cfg = await getCfg();
+  const payload = JSON.parse(toolPayload(SKILL, FIELDS, cfg, true));
+
+  if (HAS_CHROME && chrome.tabs) {
+    // 扩展内：存 payload 后打开真正的扩展页（blob 页面会继承扩展 CSP，内联脚本会被拦）
+    const { toolPages = {} } = await chrome.storage.local.get(['toolPages']);
+    const id = uid();
+    toolPages[id] = payload;
+    const keys = Object.keys(toolPages);
+    if (keys.length > 20) keys.slice(0, keys.length - 20).forEach(k => delete toolPages[k]);
+    await chrome.storage.local.set({ toolPages });
+    chrome.tabs.create({ url: chrome.runtime.getURL('tool.html?id=' + id) });
+    toast('已在新标签页打开独立界面（可直接执行）');
+    return;
+  }
+
+  try {
+    const html = await buildToolPage(SKILL, FIELDS, cfg, true);
+    const w = window.open(URL.createObjectURL(new Blob([html], { type: 'text/html' })), '_blank');
+    if (!w) toast('浏览器拦截了新标签页，请允许弹窗后重试');
+    else toast('已在新标签页打开独立界面');
+  } catch (e) { toast('打开失败：' + e.message); }
+};
+
+/* 导出 / 下载界面 HTML（不含 Key） */
+$('btnDlPage').onclick = async () => {
+  if (!SKILL || !FIELDS.length) { toast('请先生成界面'); return; }
+  const cfg = await getCfg();
+  try {
+    const html = await buildToolPage(SKILL, FIELDS, cfg, false);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+    a.download = (SKILL.name || 'skill') + '-界面.html'; a.click();
+    toast('已下载单文件界面（为安全未包含 API Key）');
+  } catch (e) { toast('导出失败：' + e.message); }
+};
+
+/* ===== 轻量 Markdown 渲染（表格/代码块/列表/标题） ===== */
+function renderMarkdown(src) {
+  const lines = escapeHtml(src).split('\n');
+  let html = '', inUl = false, inOl = false, inCode = false, codeBuf = [], tableBuf = [];
+  const inline = t => t
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
+    .replace(/\*([^*\n]+)\*/g, '<i>$1</i>')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  const flushList = () => { if (inUl) { html += '</ul>'; inUl = false; } if (inOl) { html += '</ol>'; inOl = false; } };
+  const flushTable = () => {
+    if (!tableBuf.length) return;
+    const rows = tableBuf.map(r => r.replace(/^\||\|$/g, '').split('|').map(c => c.trim()));
+    const body = rows.slice(rows[1] && /^:?-+:?$/.test(rows[1][0] || '') ? 2 : 1);
+    html += '<table><thead><tr>' + rows[0].map(c => '<th>' + inline(c) + '</th>').join('') + '</tr></thead><tbody>' +
+      body.map(r => '<tr>' + r.map(c => '<td>' + inline(c) + '</td>').join('') + '</tr>').join('') + '</tbody></table>';
+    tableBuf = [];
+  };
+  for (const line of lines) {
+    if (/^```/.test(line.trim())) {
+      if (inCode) { html += '<pre><code>' + codeBuf.join('\n') + '</code></pre>'; codeBuf = []; inCode = false; }
+      else { flushList(); flushTable(); inCode = true; }
+      continue;
+    }
+    if (inCode) { codeBuf.push(line); continue; }
+    if (/^\s*\|/.test(line)) { flushList(); tableBuf.push(line.trim()); continue; }
+    flushTable();
+    if (/^#{1,6}\s/.test(line)) {
+      flushList();
+      const l = Math.min(line.match(/^#+/)[0].length + 2, 6);
+      html += `<h${l}>` + inline(line.replace(/^#+\s*/, '')) + `</h${l}>`; continue;
+    }
+    if (/^\s*[-*]\s+/.test(line)) {
+      if (inOl) { html += '</ol>'; inOl = false; }
+      if (!inUl) { html += '<ul>'; inUl = true; }
+      html += '<li>' + inline(line.replace(/^\s*[-*]\s+/, '')) + '</li>'; continue;
+    }
+    if (/^\s*\d+[.、)]\s+/.test(line)) {
+      if (inUl) { html += '</ul>'; inUl = false; }
+      if (!inOl) { html += '<ol>'; inOl = true; }
+      html += '<li>' + inline(line.replace(/^\s*\d+[.、)]\s+/, '')) + '</li>'; continue;
+    }
+    if (/^\s*(-{3,}|\*{3,})\s*$/.test(line)) { flushList(); html += '<hr>'; continue; }
+    if (!line.trim()) { flushList(); continue; }
+    flushList(); html += '<p>' + inline(line) + '</p>';
+  }
+  flushList(); flushTable();
+  if (inCode) html += '<pre><code>' + codeBuf.join('\n') + '</code></pre>';
+  return html;
+}
+
+/* ===== 生成历史 ===== */
+async function saveHistory() {
+  try {
+    const entry = {
+      id: uid(), skillName: SKILL.name, skillRaw: SKILL.raw, refs: SKILL.refs,
+      fieldsSchema: FIELDS.map(f => ({ ...f })), values: window._lastValues || {},
+      result: lastResult.slice(0, 200000), isHtml: !!resultHtml, html: resultHtml || '',
+      mode: mode || 'heuristic', date: Date.now()
+    };
+    const { history = [] } = await store.get(['history']);
+    history.unshift(entry);
+    if (history.length > 50) history.length = 50;
+    await store.set({ history });
+    renderHistory();
+  } catch (e) {
+    console.error('历史保存失败', e);
+    toast('⚠️ 历史保存失败：' + (e.message || e));
+  }
+}
+
+async function renderHistory() {
+  const { history = [] } = await store.get(['history']);
+  $('histCount').textContent = history.length ? history.length + ' 条' : '';
+  const list = $('histList');
+  if (!history.length) {
+    list.innerHTML = '<p style="font-size:12px;color:var(--text-3)">还没有生成记录。执行成功后会自动保存（保留最近 50 条），点击任意记录可查看页面、或用当时的 Skill 和参数重新生成。</p>';
+    return;
+  }
+  list.innerHTML = '';
+  history.forEach(h => {
+    const d = document.createElement('div'); d.className = 'hist-item';
+    d.innerHTML = `<span>${h.isHtml ? '🌐' : '📄'}</span>
+      <span class="n">${escapeHtml(h.skillName)}</span>
+      <span class="badge ${h.isHtml ? 'html' : 'text'}">${h.isHtml ? 'HTML' : '文本'}</span>
+      <span class="d">${new Date(h.date).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+      <span class="del" title="删除">✕</span>`;
+    d.addEventListener('click', e => { if (e.target.classList.contains('del')) return; openViewer(h.id); });
+    d.querySelector('.del').addEventListener('click', async e => {
+      e.stopPropagation();
+      await store.set({ history: history.filter(x => x.id !== h.id) });
+      renderHistory(); toast('已删除该条记录');
+    });
+    list.appendChild(d);
+  });
+}
+
+/* ===== 结果查看器 + 重新生成 ===== */
+let viewerEntry = null;
+async function openViewer(id) {
+  const { history = [] } = await store.get(['history']);
+  const h = history.find(x => x.id === id); if (!h) return;
+  viewerEntry = h;
+  $('vwTitle').textContent = h.skillName;
+  $('vwMeta').textContent = new Date(h.date).toLocaleString('zh-CN') + ' · ' + (h.isHtml ? 'HTML 页面' : '文本结果');
+  const body = $('vwBody'); body.innerHTML = '';
+  body.setAttribute('data-noi18n', '1');   // 查看器内容是 LLM 产物，不参与界面翻译
+  if (h.isHtml) {
+    const ifr = document.createElement('iframe');
+    ifr.setAttribute('sandbox', 'allow-scripts');
+    ifr.srcdoc = h.html; ifr.className = 'vw-frame';
+    body.style.padding = '0';
+    body.appendChild(ifr);
+    $('vwOpen').classList.remove('hidden');
+    $('vwSavePage').classList.remove('hidden');
+  } else {
+    body.style.padding = '16px';
+    const div = document.createElement('div');
+    div.innerHTML = renderMarkdown(h.result);
+    body.appendChild(div);
+    $('vwOpen').classList.add('hidden');
+    $('vwSavePage').classList.add('hidden');
+  }
+  $('viewer').classList.remove('hidden');
+}
+function closeViewer() { $('viewer').classList.add('hidden'); viewerEntry = null; }
+$('vwClose').onclick = closeViewer;
+$('viewer').addEventListener('click', e => { if (e.target === $('viewer')) closeViewer(); });
+$('vwOpen').onclick = () => {
+  if (!viewerEntry || !viewerEntry.html) return;
+  openHtmlPage(viewerEntry.html, viewerEntry.skillName + '-页面');
+};
+$('vwDownload').onclick = () => {
+  if (!viewerEntry) return;
+  const isH = viewerEntry.isHtml;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([isH ? viewerEntry.html : viewerEntry.result],
+    { type: isH ? 'text/html' : 'text/markdown' }));
+  a.download = viewerEntry.skillName + '-结果.' + (isH ? 'html' : 'md'); a.click();
+};
+$('vwRegen').onclick = () => {
+  if (!viewerEntry) return;
+  const h = viewerEntry;
+  closeViewer();
+  currentSkillId = null;
+  loadSkill(h.skillRaw, h.refs || [], h.skillName);
+  FIELDS = (h.fieldsSchema || []).map(f => ({ ...f }));
+  mode = h.mode || 'heuristic';
+  renderForm();
+  FIELDS.forEach(f => {
+    const el = document.querySelector(`[data-key="${f.key}"]`);
+    if (el && h.values && h.values[f.key] != null) el.value = h.values[f.key];
+  });
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  toast('已载入当时的 Skill 与界面，参数已回填，可修改后重新执行');
+};
+
+/* ===== 我的页面：保存生成的界面/结果页面，一键直达，可管理 ===== */
+async function getPages() { const { pages = [] } = await store.get(['pages']); return pages; }
+async function savePages(list) { await store.set({ pages: list.slice(0, 100) }); }
+
+async function addPage(entry) {
+  try {
+    const pages = await getPages();
+    // 同名同类型则覆盖更新（保留原 id 与位置）
+    const i = pages.findIndex(p => p.name === entry.name && p.type === entry.type);
+    entry.id = i >= 0 ? pages[i].id : uid();
+    entry.date = Date.now();
+    if (i >= 0) pages[i] = entry; else pages.unshift(entry);
+    await savePages(pages);
+    renderPages();
+    toast(i >= 0 ? '已更新「我的页面」中的同名页面' : '已存入「我的页面」，下次点击即可直接使用');
+    return entry;
+  } catch (e) {
+    console.error('页面保存失败', e);
+    toast('⚠️ 页面保存失败：' + (e.message || e));
+  }
+}
+
+async function deletePage(id) {
+  await savePages((await getPages()).filter(p => p.id !== id));
+  renderPages(); toast('已删除该页面');
+}
+
+async function openPageEntry(p) {
+  if (p.type === 'static') {
+    if (HAS_CHROME && chrome.tabs) { chrome.tabs.create({ url: chrome.runtime.getURL('doc.html?id=' + p.id) }); return; }
+    window.open(URL.createObjectURL(new Blob([p.html], { type: 'text/html' })), '_blank');
+    return;
+  }
+  // tool 页面：扩展内打开 tool.html?id=；独立版现场构建单文件页
+  if (HAS_CHROME && chrome.tabs) { chrome.tabs.create({ url: chrome.runtime.getURL('tool.html?id=' + p.id) }); return; }
+  try {
+    const cfg = await getCfg();
+    const html = await buildToolPage(
+      { name: p.name, description: p.payload.description, body: p.payload.body, refs: p.payload.refs },
+      p.payload.fields, cfg, true);
+    window.open(URL.createObjectURL(new Blob([html], { type: 'text/html' })), '_blank');
+  } catch (e) { toast('打开失败：' + e.message); }
+}
+
+async function renderPages() {
+  const pages = await getPages();
+  $('pageCount').textContent = pages.length ? pages.length + ' 个' : '';
+  const list = $('pageList');
+  if (!pages.length) {
+    list.innerHTML = '<p style="font-size:12px;color:var(--text-3)">还没有保存的页面。把生成的界面或结果里的 HTML 页面「存入我的页面」，下次在这里（或插件弹窗）点击即可直接打开使用。</p>';
+    return;
+  }
+  list.innerHTML = '';
+  pages.forEach(p => {
+    const d = document.createElement('div'); d.className = 'hist-item page-item';
+    d.innerHTML = `<span>${p.type === 'tool' ? '🧩' : '🌐'}</span>
+      <span class="n" title="点击可重命名">${escapeHtml(p.name)}</span>
+      <span class="badge ${p.type === 'tool' ? 'tool' : 'html'}">${p.type === 'tool' ? '工具页' : '网页'}</span>
+      <span class="d">${new Date(p.date).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+      <span class="del" title="删除">✕</span>`;
+    d.addEventListener('click', async e => {
+      if (e.target.classList.contains('del') || e.target.isContentEditable) return;
+      openPageEntry(p);
+    });
+    d.querySelector('.n').addEventListener('dblclick', async e => {
+      e.stopPropagation();
+      const el = e.target; el.contentEditable = 'true'; el.focus();
+      document.execCommand && document.getSelection().selectAllChildren(el);
+      const done = async ok => {
+        el.contentEditable = 'false';
+        const nv = el.textContent.trim();
+        if (ok && nv && nv !== p.name) {
+          p.name = nv;
+          const pages = await getPages();
+          const it = pages.find(x => x.id === p.id);
+          if (it) { it.name = nv; await savePages(pages); }
+          toast('已重命名为「' + nv + '」');
+        }
+        renderPages();
+      };
+      el.addEventListener('blur', () => done(true), { once: true });
+      el.addEventListener('keydown', ev => {
+        if (ev.key === 'Enter') { ev.preventDefault(); el.blur(); }
+        if (ev.key === 'Escape') { el.textContent = p.name; el.blur(); }
+      });
+    });
+    d.querySelector('.del').addEventListener('click', async e => {
+      e.stopPropagation(); await deletePage(p.id);
+    });
+    list.appendChild(d);
+  });
+}
+
+/* 保存入口 ①：把当前生成的工具界面存入 */
+$('btnSavePage').onclick = async () => {
+  if (!SKILL || !FIELDS.length) { toast('请先生成界面'); return; }
+  const cfg = await getCfg();
+  await addPage({
+    name: SKILL.name || '未命名工具页', type: 'tool',
+    payload: JSON.parse(toolPayload(SKILL, FIELDS, cfg, false))
+  });
+};
+
+/* 保存入口 ②：把执行结果里的 HTML 页面存入 */
+$('btnSaveHtmlPage').onclick = async () => {
+  if (!resultHtml) return;
+  await addPage({ name: (SKILL ? SKILL.name : '页面') + '-页面', type: 'static', html: resultHtml });
+};
+
+/* 保存入口 ③：历史查看器里的 HTML 存入 */
+$('vwSavePage').onclick = async () => {
+  if (!viewerEntry || !viewerEntry.html) return;
+  closeViewer();
+  await addPage({ name: viewerEntry.skillName + '-页面', type: 'static', html: viewerEntry.html });
+};
+
+$('pageRefresh').onclick = async () => { await renderPages(); toast('页面列表已刷新'); };
+
+/* 配置自动保存 */
+['cfgBase', 'cfgKey', 'cfgModel'].forEach(id => $(id).addEventListener('change', saveCfg));
+
+/* ===== 示例 Skill ===== */
+const DEMO_SKILL = `---
+name: weekly-report
+description: 把本周零散的工作记录整理成一份结构清晰的周报，风格可调。
+---
+
+# 周报生成器
+
+你是一位专业的职场写作助手。请把用户提供的本周工作素材整理成一份周报。
+
+## 要求
+1. 结构分为：本周成果、数据亮点、问题与风险、下周计划 四个部分
+2. 成果使用"动词开头 + 具体结果"的句式，突出价值而非流水账
+3. 如有数字，提炼为 1-2 个数据亮点
+4. 总长度控制在 400 字以内
+
+## 输入参数
+- work: 本周工作记录，杂乱无序也没关系
+- issues: 遇到的问题或风险，可为空
+- plan: 下周计划
+- tone: 周报语气，正式 / 轻松 / 简洁
+
+## 输出
+直接输出整理好的周报全文。
+
+{{work}} {{issues}} {{plan}} {{tone}}`;
+
+</script>
+</body>
+</html>

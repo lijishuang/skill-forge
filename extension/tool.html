@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Skill 工具</title>
+<link rel="stylesheet" href="tool.css">
+</head>
+<body>
+<header>
+  <div class="logo">⚒</div>
+  <div>
+    <h1 id="hdTitle">Skill 工具</h1>
+    <p id="hdDesc"></p>
+  </div>
+  <div class="hb" id="hdBadge">Skill 工坊 · 独立页面</div>
+  <div class="langsw" id="langSw" data-noi18n style="margin-left:12px">
+    <button data-l="zh">中文</button><button data-l="en">EN</button>
+  </div>
+</header>
+<main>
+  <div class="col">
+    <div class="card">
+      <h2>输入参数 <span class="tag" id="fldTag"></span></h2>
+      <form id="form"></form>
+      <div class="btnrow">
+        <button class="primary" id="btnRun" style="padding:9px 26px">▶ 执行</button>
+        <button id="btnClear">清空</button>
+        <button id="btnBack" class="hide">← 回到工坊</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>⚙ 模型配置</h2>
+      <details open>
+        <summary>OpenAI 兼容接口（只存在本机浏览器）</summary>
+        <label class="f">API 地址（以 /v1 结尾）</label><input id="cBase" placeholder="https://api.deepseek.com/v1">
+        <label class="f">API Key</label><input id="cKey" type="password" placeholder="sk-…">
+        <label class="f">模型名称</label><input id="cModel" placeholder="deepseek-chat">
+      </details>
+    </div>
+  </div>
+  <div class="col">
+    <div class="card">
+      <h2>执行结果 <span class="tag" id="stat">待执行</span></h2>
+      <div class="seg hide" id="seg">
+        <button id="segPv" class="on">🖼 页面预览</button>
+        <button id="segCd">⌨ 源码</button>
+      </div>
+      <div class="out pv hide" id="pvWrap"><iframe id="pv" sandbox="allow-scripts allow-forms allow-popups allow-modals"></iframe></div>
+      <div class="out" id="out">执行结果将在这里流式输出…</div>
+      <div class="btnrow">
+        <button id="btnCopy">复制</button>
+        <button id="btnDl">下载 .md</button>
+        <button id="btnOpenHtml" class="hide">🌐 新标签页打开页面</button>
+        <button id="btnDlHtml" class="hide">下载 .html</button>
+      </div>
+    </div>
+  </div>
+</main>
+<div class="toast" id="toast"></div>
+<script src="i18n.js"></script>
+<script src="tool.js"></script>
+</body>
+</html>

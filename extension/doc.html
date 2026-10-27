@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>页面预览</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{display:flex;flex-direction:column;height:100vh;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;background:#f6f7f9}
+  header{display:flex;align-items:center;gap:10px;padding:10px 18px;background:#fff;border-bottom:1px solid #e5e7eb;flex-wrap:wrap}
+  .logo{width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-size:14px}
+  b{font-size:14px;font-weight:600;color:#1f2328}
+  .meta{font-size:12px;color:#8b949e}
+  .row{margin-left:auto;display:flex;gap:8px}
+  button{font:inherit;font-size:12.5px;cursor:pointer;border-radius:8px;border:1px solid #d1d5db;background:#fff;
+    color:#1f2328;padding:6px 13px}
+  button:hover{border-color:#2563eb;color:#2563eb}
+  button.primary{background:#2563eb;border-color:#2563eb;color:#fff;font-weight:600}
+  iframe{flex:1;width:100%;border:none;background:#fff}
+  .empty{padding:60px 20px;text-align:center;color:#8b949e;font-size:14px}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">⚒</div>
+  <b id="t">页面预览</b>
+  <span class="meta" id="m"></span>
+  <div class="row">
+    <div class="langsw" id="langSw" data-noi18n style="margin:0 8px 0 0">
+      <button data-l="zh">中文</button><button data-l="en">EN</button>
+    </div>
+    <button class="primary" id="dl">⬇ 下载 .html</button>
+    <button id="raw">🧾 查看源码</button>
+  </div>
+</header>
+<iframe id="frame" sandbox="allow-scripts allow-forms allow-popups allow-modals allow-downloads"></iframe>
+<script src="i18n.js"></script>
+<script src="doc.js"></script>
+</body>
+</html>

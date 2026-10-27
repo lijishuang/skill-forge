@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<style>
+  html,body{margin:0;padding:0;height:100%}
+</style>
+</head>
+<body>
+<script>
+/* 沙箱页：没有扩展 API 权限，但允许执行内联脚本。
+   由 doc.html postMessage 传入 HTML，直接重写本文档，等效于“真的打开了这个页面”。 */
+window.addEventListener('message', function (e) {
+  var d = e.data || {};
+  if (d.type === 'skill-html' && typeof d.html === 'string') {
+    try {
+      document.open();
+      document.write(d.html);
+      document.close();
+    } catch (err) {
+      document.body.textContent = '页面渲染失败：' + err.message;
+    }
+  }
+});
+if (window.parent !== window) window.parent.postMessage({ type: 'skill-sandbox-ready' }, '*');
+</script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+# OS / Editor
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.vscode/
+.idea/
+
+# Build artifacts
+*.zip
+dist/
+build/
+
+# Local config / secrets
+.env
+*.local.json

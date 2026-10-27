@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{width:320px;font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    background:#f6f7f9;color:#1f2328;font-size:13px}
+  header{position:relative;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;padding:14px 16px}
+  header .langsw{position:absolute;top:9px;right:12px;margin:0}
+  header h1{font-size:15px;display:flex;align-items:center;gap:8px}
+  header p{font-size:11px;opacity:.85;margin-top:2px}
+  section{padding:12px 16px}
+  .sec-title{font-size:11px;color:#57606a;font-weight:600;letter-spacing:.05em;margin-bottom:8px}
+  .skill{background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px;margin-bottom:6px;
+    display:flex;align-items:center;gap:8px;cursor:pointer;transition:.15s}
+  .skill:hover{border-color:#2563eb;background:#eff6ff}
+  .skill .name{font-weight:600;font-size:12.5px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .skill .del{color:#8b949e;font-size:11px;cursor:pointer;padding:2px 4px;border-radius:4px}
+  .skill .del:hover{color:#dc2626;background:#fef2f2}
+  .badge{font-size:10px;border-radius:4px;padding:1px 6px;font-weight:600;flex-shrink:0}
+  .skill .badge{background:#eff6ff;color:#2563eb}
+  .empty{color:#8b949e;font-size:12px;text-align:center;padding:14px 0}
+  button{font:inherit;cursor:pointer;border-radius:8px;border:none;width:100%;
+    padding:9px;font-size:13px;font-weight:600;transition:.15s}
+  .primary{background:#2563eb;color:#fff}
+  .primary:hover{opacity:.9}
+  .ghost{background:#fff;border:1px solid #d1d5db;color:#1f2328;font-weight:500;margin-top:6px}
+  .ghost:hover{border-color:#2563eb;color:#2563eb}
+  footer{padding:8px 16px 14px;font-size:11px;color:#8b949e;line-height:1.6}
+  .cfg-ok{color:#16a34a}.cfg-no{color:#b45309}
+  .banner{background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:8px;
+    padding:8px 10px;margin-bottom:8px;font-size:12px;display:none}
+</style>
+</head>
+<body>
+<header>
+  <h1>⚒ Skill 工坊</h1>
+  <p>上传 Skill → 生成界面 → 调用 LLM 执行</p>
+  <div class="langsw" id="langSw" data-noi18n>
+    <button data-l="zh">中文</button><button data-l="en">EN</button>
+  </div>
+</header>
+
+<section>
+  <div class="banner" id="pendingBanner"></div>
+  <div class="sec-title">技能库</div>
+  <div id="list"><div class="empty">还没有保存的 Skill</div></div>
+</section>
+
+<section>
+  <div class="sec-title">我的页面 <span id="pageTag" style="color:#8b949e;font-weight:400"></span></div>
+  <div id="pageList"><div class="empty">还没有保存的页面</div></div>
+</section>
+
+<section>
+  <button class="primary" id="openApp">⚒ 打开工作台</button>
+  <button class="ghost" id="openCfg">⚙ 模型配置</button>
+</section>
+
+<footer>
+  <span id="cfgStatus"></span><br>
+  小技巧：在网页里<b>选中 SKILL.md 全文</b>，右键「存入 Skill 工坊」即可保存；选中任意内容可右键直接送入执行。
+</footer>
+
+<script src="i18n.js"></script>
+<script src="popup.js"></script>
+</body>
+</html>

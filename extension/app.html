@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Skill 工坊 · 工作台</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --panel:#ffffff; --border:#e5e7eb; --border-strong:#d1d5db;
+    --text:#1f2328; --text-2:#57606a; --text-3:#8b949e;
+    --accent:#2563eb; --accent-soft:#eff6ff; --accent-border:#bfdbfe;
+    --green:#16a34a; --green-soft:#f0fdf4; --amber:#b45309; --amber-soft:#fffbeb;
+    --radius:12px; --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+    background:var(--bg);color:var(--text);font-size:14px;line-height:1.6}
+  header{background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;padding:16px 28px;
+    display:flex;align-items:center;gap:14px}
+  .logo{width:38px;height:38px;border-radius:10px;background:rgba(255,255,255,.2);
+    display:flex;align-items:center;justify-content:center;font-size:19px}
+  header h1{font-size:17px;font-weight:600}
+  header p{font-size:12.5px;opacity:.85}
+  .steps{margin-left:auto;display:flex;gap:8px}
+  .step{display:flex;align-items:center;gap:6px;font-size:12px;background:rgba(255,255,255,.15);
+    border-radius:99px;padding:4px 12px}
+  .step.on{background:#fff;color:var(--accent);font-weight:600}
+  .banner{display:none;max-width:1400px;margin:14px auto -4px;padding:10px 16px;border-radius:10px;
+    font-size:13px;align-items:center;gap:10px}
+  .banner.show{display:flex}
+  .banner.save{background:var(--amber-soft);border:1px solid #fde68a;color:#92400e}
+  .banner.exec{background:var(--accent-soft);border:1px solid var(--accent-border);color:#1d4ed8}
+  .banner b{font-weight:600}
+  .banner button{padding:4px 12px;font-size:12px}
+  main{display:grid;grid-template-columns:430px 1fr;gap:20px;padding:20px 28px;max-width:1400px;margin:0 auto}
+  @media(max-width:980px){main{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:18px}
+  .card h2{font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px;margin-bottom:12px}
+  .card h2 .tag{font-size:11px;font-weight:500;color:var(--text-3);margin-left:auto}
+  .col{display:flex;flex-direction:column;gap:20px}
+  .drop{border:2px dashed var(--border-strong);border-radius:10px;padding:22px 16px;text-align:center;
+    cursor:pointer;transition:.15s;color:var(--text-2)}
+  .drop:hover,.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+  .drop .big{font-size:24px;margin-bottom:4px}
+  .btnrow{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center}
+  button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--border-strong);
+    background:var(--panel);color:var(--text);padding:7px 14px;font-size:13px;transition:.15s}
+  button:hover{border-color:var(--accent);color:var(--accent)}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+  button.primary:hover{opacity:.9;color:#fff}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  .divider{display:flex;align-items:center;gap:10px;color:var(--text-3);font-size:12px;margin:12px 0}
+  .divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--border)}
+  textarea{width:100%;min-height:96px;border:1px solid var(--border-strong);border-radius:8px;
+    padding:10px;font:12.5px var(--mono);resize:vertical}
+  textarea:focus,input:focus,select:focus{outline:2px solid var(--accent-border);border-color:var(--accent)}
+  input,select{width:100%;border:1px solid var(--border-strong);border-radius:8px;padding:8px 10px;
+    font:inherit;font-size:13px;background:var(--panel)}
+  label.f{display:block;font-size:12px;color:var(--text-2);margin:10px 0 4px;font-weight:500}
+  .skill-item{display:flex;align-items:center;gap:8px;border:1px solid var(--border);border-radius:8px;
+    padding:8px 10px;margin-bottom:6px;cursor:pointer;transition:.15s;font-size:13px}
+  .skill-item:hover{border-color:var(--accent);background:var(--accent-soft)}
+  .skill-item.active{border-color:var(--accent);background:var(--accent-soft)}
+  .skill-item .n{flex:1;font-weight:600;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .skill-item .d{font-size:11px;color:var(--text-3)}
+  .skill-item .del{color:var(--text-3);padding:2px 6px;border-radius:4px;font-size:12px}
+  .skill-item .del:hover{color:#dc2626;background:#fef2f2}
+  .skill-card{border:1px solid var(--accent-border);background:var(--accent-soft);border-radius:10px;padding:14px}
+  .hidden{display:none!important}
+  .skill-card h3{font-size:15px;display:flex;align-items:center;gap:8px}
+  .skill-card .desc{font-size:12.5px;color:var(--text-2);margin-top:4px;max-height:60px;overflow:auto}
+  .meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .chip{font-size:11px;background:#fff;border:1px solid var(--border);border-radius:99px;padding:2px 10px;color:var(--text-2)}
+  /* 结果 markdown 渲染 */
+  .out.md{white-space:normal}
+  .out.md p{margin:6px 0}
+  .out.md h3,.out.md h4,.out.md h5,.out.md h6{margin:12px 0 4px;font-size:1.05em}
+  .out.md table{border-collapse:collapse;margin:8px 0;width:100%}
+  .out.md th,.out.md td{border:1px solid var(--border);padding:5px 9px;font-size:12.5px;text-align:left}
+  .out.md th{background:#f0f2f5;font-weight:600}
+  .out.md tr:nth-child(even) td{background:#fafbfc}
+  .out.md code{background:#eef1f4;border-radius:4px;padding:1px 5px;font-family:var(--mono);font-size:12.5px}
+  .out.md pre{background:#0d1117;color:#e6edf3;padding:12px 14px;border-radius:8px;overflow:auto;margin:8px 0}
+  .out.md pre code{background:none;color:inherit;padding:0}
+  .out.md ul,.out.md ol{padding-left:22px;margin:6px 0}
+  .out.md li{margin:2px 0}
+  .out.md hr{border:none;border-top:1px solid var(--border);margin:12px 0}
+  .out.md a{color:var(--accent)}
+  /* 生成历史 */
+  .hist-item{display:flex;align-items:center;gap:8px;border:1px solid var(--border);border-radius:8px;
+    padding:9px 12px;margin-bottom:6px;cursor:pointer;transition:.15s;font-size:13px}
+  .hist-item:hover{border-color:var(--accent);background:var(--accent-soft);transform:translateY(-1px)}
+  .hist-item .n{flex:1;font-weight:600;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .hist-item .d{font-size:11px;color:var(--text-3);white-space:nowrap}
+  .badge{font-size:10px;border-radius:4px;padding:1px 6px;font-weight:600}
+  .badge.html{background:var(--accent-soft);color:var(--accent)}
+  .badge.text{background:var(--green-soft);color:var(--green)}
+  .hist-item .del{color:var(--text-3);padding:2px 6px;border-radius:4px;font-size:12px}
+  .hist-item .del:hover{color:#dc2626;background:#fef2f2}
+  .mini-ico{font-size:12px;padding:2px 7px;border-radius:6px;border:1px solid var(--border);background:#fff;cursor:pointer;line-height:1.4}
+  .mini-ico:hover{border-color:var(--accent);background:var(--accent-soft)}
+  .storewarn{background:#fef3c7;border:1px solid #fcd34d;color:#92400e;border-radius:10px;
+    padding:10px 14px;font-size:12.5px;margin-bottom:14px}
+  .badge.tool{background:#fef3c7;color:#b45309}
+  .page-item .n{cursor:text}
+  .page-item .n[contenteditable="true"]{outline:1px dashed var(--accent);border-radius:4px;padding:0 4px}
+  /* 结果查看器 */
+  .viewer{position:fixed;inset:0;background:rgba(15,18,25,.55);z-index:100;
+    display:flex;align-items:center;justify-content:center;padding:24px}
+  .viewer-box{background:#fff;border-radius:14px;width:min(960px,100%);height:min(86vh,900px);
+    display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+  .viewer-head{display:flex;align-items:center;gap:10px;padding:12px 18px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+  .viewer-head b{font-size:14px}
+  .vw-meta{font-size:12px;color:var(--text-3)}
+  .viewer-head .btnrow{margin:0 0 0 auto}
+  .viewer-head button{padding:5px 12px;font-size:12px}
+  .viewer-body{flex:1;overflow:auto;padding:16px}
+  .vw-frame{width:100%;height:100%;border:none;border-radius:8px;background:#fff}
+  .field{margin-bottom:14px}
+  .field .fl{font-size:13px;font-weight:500;margin-bottom:4px;display:flex;align-items:center;gap:6px}
+  .field .fl .req{color:#dc2626;font-size:11px}
+  .field .fk{font-size:11px;color:var(--text-3);font-family:var(--mono);font-weight:400}
+  .field .hint{font-size:11.5px;color:var(--text-3);margin-bottom:5px}
+  .empty{border:1px dashed var(--border-strong);border-radius:10px;padding:40px 20px;text-align:center;color:var(--text-3)}
+  .empty .big{font-size:30px;margin-bottom:8px}
+  .out{border:1px solid var(--border);border-radius:10px;background:#fbfbfc;min-height:120px;
+    padding:16px;font-size:13.5px;white-space:pre-wrap;word-break:break-word}
+  .out.preview{padding:0;background:#fff;overflow:hidden;white-space:normal}
+  .out.preview iframe{width:100%;height:560px;border:none;display:block;background:#fff}
+  .seg{display:inline-flex;border:1px solid var(--border-strong);border-radius:8px;overflow:hidden;margin-bottom:10px}
+  .seg button{border:none;border-radius:0;padding:5px 14px;font-size:12px;background:var(--panel)}
+  .seg button.on{background:var(--accent);color:#fff;font-weight:600}
+  .statusbar{font-size:12.5px;color:var(--text-2);margin-bottom:10px;min-height:18px}
+  .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--border-strong);margin-right:6px}
+  .dot.run{background:var(--accent);animation:pulse 1s infinite}
+  .dot.ok{background:var(--green)} .dot.err{background:#dc2626}
+  @keyframes pulse{50%{opacity:.3}}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1f2328;color:#fff;
+    padding:10px 20px;border-radius:10px;font-size:13px;opacity:0;transition:.3s;pointer-events:none;z-index:99}
+  .toast.show{opacity:.95}
+  details summary{cursor:pointer;font-size:12.5px;color:var(--text-2);font-weight:500}
+  .mode-badge{font-size:11px;border-radius:99px;padding:2px 10px;font-weight:500}
+  .mode-heuristic{background:var(--green-soft);color:var(--green)}
+  .mode-ai{background:var(--accent-soft);color:var(--accent)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">⚒</div>
+  <div>
+    <h1>Skill 工坊 · 工作台</h1>
+    <p>上传任意 SKILL.md → 自动生成适配界面 → 填参数调用 LLM 执行</p>
+  </div>
+  <div class="steps">
+    <div class="step on" id="st1">1 上传 Skill</div>
+    <div class="step" id="st2">2 生成界面</div>
+    <div class="step" id="st3">3 执行</div>
+  </div>
+  <div class="langsw" id="langSw" data-noi18n style="margin-left:14px">
+    <button data-l="zh">中文</button><button data-l="en">EN</button>
+  </div>
+</header>
+
+<div class="banner save" id="bannerSave">
+  📥 网页选中内容已导入（来自右键「存入 Skill 工坊」）
+  <button class="primary" id="btnSavePending">解析并存入技能库</button>
+  <span style="font-size:11px;opacity:.8" id="saveSrc"></span>
+</div>
+<div class="banner exec" id="bannerExec">
+  ▶ 网页选中内容已导入（来自右键「执行选中内容」），加载 Skill 后会自动填入
+</div>
+
+<main>
+  <div class="storewarn hidden" id="storeWarn">⚠️ 当前环境拦截了浏览器本地存储（常见于内嵌预览面板），数据<strong>仅本次会话有效</strong>，刷新后会丢失。请用浏览器直接打开本文件，或安装浏览器插件版以永久保存。</div>
+  <!-- 左列 -->
+  <div class="col">
+
+    <div class="card" id="libCard">
+      <h2>📚 技能库 <span class="tag" id="libCount"></span></h2>
+      <div id="libList"><p style="font-size:12px;color:var(--text-3)">还没有保存的 Skill。上传后点「存入技能库」，或在网页中选中 SKILL.md 内容右键保存。</p></div>
+    </div>
+
+    <div class="card">
+      <h2>① 上传 Skill <span class="tag">支持 .md / 文件夹</span></h2>
+      <div class="drop" id="drop">
+        <div class="big">📦</div>
+        拖拽 <b style="color:var(--accent)">SKILL.md</b> / <b style="color:var(--accent)">技能压缩包 .zip</b> / 文件夹到这里，或点击选择
+        <input type="file" id="fileInput" multiple accept=".md,.markdown,.txt,.zip" hidden>
+        <input type="file" id="dirInput" webkitdirectory multiple hidden>
+      </div>
+      <div class="btnrow">
+        <button id="btnFiles">选择文件 / .zip</button>
+        <button id="btnDir">选择文件夹</button>
+        <button class="primary" id="btnDemo" style="margin-left:auto">试用示例</button>
+      </div>
+      <div class="divider">或直接粘贴</div>
+      <textarea id="pasteArea" placeholder="把 SKILL.md 完整内容粘贴到这里…"></textarea>
+      <div class="btnrow"><button class="primary" id="btnParsePaste">解析粘贴内容</button></div>
+    </div>
+
+    <div class="card skill-card hidden" id="skillCard">
+      <h3>📄 <span id="skName"></span> <span class="mode-badge mode-heuristic" id="skMode"></span></h3>
+      <div class="desc" id="skDesc"></div>
+      <div class="meta" id="skMeta"></div>
+      <div class="btnrow" style="margin-top:12px">
+        <button id="btnViewRaw">查看原文</button>
+        <button id="btnSaveLib">💾 存入技能库</button>
+        <button class="primary" id="btnAutoUI" style="margin-left:auto">⚡ 生成界面</button>
+      </div>
+    </div>
+
+    <div class="card" id="cfg">
+      <h2>⚙ 模型配置 <span class="tag">存于插件本地存储</span></h2>
+      <details open>
+        <summary>OpenAI 兼容接口（OpenAI / DeepSeek / Kimi / Ollama 等）</summary>
+        <label class="f">API 地址（Base URL，以 /v1 结尾）</label>
+        <input id="cfgBase" placeholder="https://api.deepseek.com/v1">
+        <label class="f">API Key</label>
+        <input id="cfgKey" type="password" placeholder="sk-…">
+        <label class="f">模型名称</label>
+        <input id="cfgModel" placeholder="deepseek-chat / gpt-4o-mini / …">
+      </details>
+      <div class="btnrow">
+        <button class="primary" id="btnAIGen">🤖 AI 智能设计界面</button>
+        <button id="btnManualUI">✏ 手动补字段</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 右列 -->
+  <div class="col">
+    <div class="card">
+      <h2>② 生成的工具界面 <span class="tag" id="formTag">尚未生成</span></h2>
+      <div id="formArea" class="empty">
+        <div class="big">🧩</div>
+        上传并解析 Skill 后点击「生成界面」
+      </div>
+      <div class="btnrow" style="margin-top:14px">
+        <button class="primary" id="btnRun" disabled style="font-size:14px;padding:9px 26px">▶ 用 LLM 执行此 Skill</button>
+        <button id="btnReset" disabled>清空</button>
+        <button id="btnOpenPage" disabled title="把当前这个界面打包成一个独立 HTML 工具页，在新标签页单独打开" style="border-color:var(--accent);color:var(--accent);font-weight:600">🌐 新标签页打开此界面</button>
+        <button id="btnDlPage" disabled title="下载为单文件 HTML，可双击打开、发给别人">⬇ 保存为 .html</button>
+        <button id="btnSavePage" disabled title="保存到「我的页面」，下次一键打开直接用">📥 存入我的页面</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>③ 执行结果</h2>
+      <div class="statusbar"><span class="dot" id="runDot"></span><span id="runStatus">待执行</span> <span id="tokenInfo"></span></div>
+      <div class="seg hidden" id="segBar">
+        <button id="segPreview" class="on">🖼 页面预览</button>
+        <button id="segCode">⌨ 源码</button>
+      </div>
+      <div class="out preview hidden" id="outPreviewWrap"><iframe id="outPreview" sandbox="allow-scripts allow-forms allow-popups allow-modals"></iframe></div>
+      <div class="out" id="output">执行结果将在这里流式输出…</div>
+      <div class="btnrow" style="margin-top:12px">
+        <button id="btnCopy" disabled>复制结果</button>
+        <button id="btnDownload" disabled>下载 .md</button>
+        <button id="btnOpenHtml" class="hidden" style="border-color:var(--accent);color:var(--accent);font-weight:600">🌐 单独打开为 HTML 页面</button>
+        <button id="btnDlHtml" class="hidden">下载 .html</button>
+        <button id="btnSaveHtmlPage" class="hidden" style="border-color:var(--accent);color:var(--accent);font-weight:600">📥 存入我的页面</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🗂 生成历史 <span class="tag" id="histCount"></span>
+        <span style="display:flex;gap:4px;margin-left:2px">
+          <button class="mini-ico" id="histRefresh" title="刷新历史">🔄</button>
+          <button class="mini-ico" id="histClear" title="清空全部历史">🗑</button>
+        </span>
+      </h2>
+      <div id="histList"><p style="font-size:12px;color:var(--text-3)">还没有生成记录。执行成功后会自动保存（保留最近 50 条），点击任意记录可查看页面、或用当时的 Skill 和参数重新生成。</p></div>
+    </div>
+
+    <div class="card">
+      <h2>🧩 我的页面 <span class="tag" id="pageCount"></span>
+        <span style="display:flex;gap:4px;margin-left:2px">
+          <button class="mini-ico" id="pageRefresh" title="刷新列表">🔄</button>
+        </span>
+      </h2>
+      <div id="pageList"><p style="font-size:12px;color:var(--text-3)">还没有保存的页面。把生成的界面或结果里的 HTML 页面「存入我的页面」，下次在这里（或插件弹窗）点击即可直接打开使用。</p></div>
+    </div>
+  </div>
+</main>
+
+<!-- 结果查看器 -->
+<div class="viewer hidden" id="viewer">
+  <div class="viewer-box">
+    <div class="viewer-head">
+      <b id="vwTitle"></b><span class="vw-meta" id="vwMeta"></span>
+      <div class="btnrow">
+        <button class="primary" id="vwRegen">🔄 重新生成</button>
+        <button id="vwOpen" class="hidden">🌐 新标签页打开</button>
+        <button id="vwDownload">⬇ 下载</button>
+        <button id="vwSavePage" class="hidden" style="border-color:var(--accent);color:var(--accent);font-weight:600">📥 存入我的页面</button>
+        <button id="vwClose">✕ 关闭</button>
+      </div>
+    </div>
+    <div class="viewer-body" id="vwBody"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="i18n.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
