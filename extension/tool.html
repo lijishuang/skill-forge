@@ -42,18 +42,30 @@
   <div class="col">
     <div class="card">
       <h2>执行结果 <span class="tag" id="stat">待执行</span></h2>
-      <div class="seg hide" id="seg">
-        <button id="segPv" class="on">🖼 页面预览</button>
-        <button id="segCd">⌨ 源码</button>
-      </div>
-      <div class="out pv hide" id="pvWrap"><iframe id="pv" sandbox="allow-scripts allow-forms allow-popups allow-modals"></iframe></div>
       <div class="out" id="out">执行结果将在这里流式输出…</div>
       <div class="btnrow">
         <button id="btnCopy">复制</button>
         <button id="btnDl">下载 .md</button>
         <button id="btnRender" class="hide" title="在终端原样输出与 Markdown 渲染之间切换">📝 渲染</button>
-        <button id="btnOpenHtml" class="hide">🌐 新标签页打开页面</button>
-        <button id="btnDlHtml" class="hide">下载 .html</button>
+      </div>
+    </div>
+  </div>
+  <div class="col col-browser">
+    <div class="card browser-card">
+      <div class="browser-head">
+        <h2>🌐 内嵌浏览器</h2>
+        <span class="tag" id="bTag">不涉及</span>
+      </div>
+      <div class="browser-tip">执行结果若包含 HTML 页面，将在这里实时渲染；纯文本结果不涉及</div>
+      <div id="bEmpty">
+        <div class="big">🛰️</div>
+        <b>不涉及</b>
+        <span>该结果不包含 HTML 页面。<br>若输出中包含 HTML，将自动在此渲染预览。</span>
+      </div>
+      <iframe id="pv" class="hide" sandbox="allow-scripts allow-forms allow-popups allow-modals" title="内嵌浏览器"></iframe>
+      <div class="btnrow hide" id="bBtns">
+        <button id="btnOpenHtml" style="border-color:var(--accent);color:var(--accent);font-weight:600">🌐 新标签页打开</button>
+        <button id="btnDlHtml">⬇ 下载 .html</button>
       </div>
     </div>
   </div>

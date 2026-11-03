@@ -210,12 +210,13 @@ async function loadPayload() {
     applyLinkage();
   };
 
-  function setSeg(pv) {
-    $('segPv').classList.toggle('on', pv); $('segCd').classList.toggle('on', !pv);
-    $('pvWrap').classList.toggle('hide', !pv); $('out').classList.toggle('hide', pv);
+  function setBrowser(hasHtml) {
+    $('pv').classList.toggle('hide', !hasHtml);
+    $('bEmpty').classList.toggle('hide', !!hasHtml);
+    $('bBtns').classList.toggle('hide', !hasHtml);
+    $('bTag').textContent = I18N.tr(hasHtml ? '已渲染 HTML' : '不涉及');
   }
-  $('segPv').onclick = () => setSeg(true);
-  $('segCd').onclick = () => setSeg(false);
+  setBrowser(false);
 
   function download(content, type, name) {
     const a = document.createElement('a');
@@ -251,7 +252,7 @@ async function loadPayload() {
     $('out').setAttribute('data-noi18n', '1');
     $('stat').textContent = I18N.tr('正在调用模型…');
     $('out').classList.remove('md'); $('out').classList.add('term'); $('out').textContent = '';
-    $('seg').classList.add('hide'); $('pvWrap').classList.add('hide'); $('out').classList.remove('hide');
+    $('out').classList.remove('hide');
     $('btnRender').classList.add('hide');
     try {
       const res = await fetch(base.replace(/\/+$/, '') + '/chat/completions', {
@@ -309,18 +310,15 @@ async function loadPayload() {
   function finish() {
     resultHtml = extractHtml(lastResult);
     if (resultHtml) {
-      $('pv').srcdoc = resultHtml;
-      $('seg').classList.remove('hide');
-      $('out').classList.add('hide'); $('pvWrap').classList.remove('hide'); setSeg(true);
-      $('btnOpenHtml').classList.remove('hide'); $('btnDlHtml').classList.remove('hide');
+      $('pv').srcdoc = resultHtml;          // 右栏内嵌浏览器默认渲染 HTML 结果
+      setBrowser(true);
       $('btnRender').classList.add('hide');
     } else {
-      $('seg').classList.add('hide'); $('pvWrap').classList.add('hide');
-      $('out').classList.remove('hide'); $('out').classList.add('term');
-      setView(false);   // 默认终端原样输出，与终端结果完全一致
+      setBrowser(false);
       $('btnRender').classList.remove('hide');
-      $('btnOpenHtml').classList.add('hide'); $('btnDlHtml').classList.add('hide');
     }
+    $('out').classList.remove('hide');
+    setView(false);   // 中栏始终为终端原样输出，与终端结果完全一致
     retr();
   }
 

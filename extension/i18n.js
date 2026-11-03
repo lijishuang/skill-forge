@@ -121,6 +121,8 @@
     '🌐 内嵌浏览器': '🌐 Embedded Browser',
     '内嵌浏览器': 'Embedded browser',
     '不涉及': 'N/A',
+    '已渲染 HTML': 'HTML rendered',
+    '该结果不包含 HTML 页面。': 'This result contains no HTML page.',
     '已渲染结果页面': 'Result page rendered',
     '执行结果若包含 HTML 页面，将在这里实时渲染；纯文本结果不涉及':
       'If the result contains an HTML page it renders here live; plain-text results are N/A',
