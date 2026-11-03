@@ -126,6 +126,9 @@
     /* ===== folder 字段：本地待检目录 ===== */
     '本地待检目录': 'Local folder to inspect',
     '选择本地目录': 'Pick a local folder',
+    '选择文件': 'Pick files',
+    '手动选择': 'Picked manually',
+    '目录为空': 'The folder is empty',
     '未选择': 'None selected',
     '全选': 'All',
     '点击打开文件': 'Click to open the file',
@@ -272,6 +275,8 @@
     [/^(\d+) 个文件$/, (m) => m[1] + ' file(s)'],
     [/^已加载待检目录（(\d+) 个文件），勾选后随执行一并提交$/,
       (m) => 'Loaded folder to inspect (' + m[1] + ' files). Check the ones to submit with the run.'],
+    [/^已加载 (\d+) 个文件，勾选后随执行一并提交$/,
+      (m) => 'Loaded ' + m[1] + ' file(s). Check the ones to submit with the run.'],
     [/^检测到 HTML 页面，已渲染预览，可单独打开$/, () => 'HTML page detected — preview rendered, you can open it standalone'],
     [/^已就绪（(.*)）$/, (m) => 'ready (' + m[1] + ')'],
     [/^已完成（(.*)）$/, (m) => 'Done (' + m[1] + ')'],

@@ -152,6 +152,27 @@ function folderPick(onLoaded) {
     }).catch(e => { if (e && e.name !== 'AbortError') folderPickFallback(onLoaded); });
   } else folderPickFallback(onLoaded);
 }
+/* 直接选择文件（可多选），不经过目录 */
+function folderPickFilesFallback(onLoaded) {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.multiple = true;
+  inp.onchange = () => {
+    const files = [...inp.files].map(f => ({ file: f, path: f.name, name: f.name, size: f.size }));
+    onLoaded(files);
+  };
+  inp.click();
+}
+function folderPickFiles(onLoaded) {
+  if (window.showOpenFilePicker) {
+    window.showOpenFilePicker({ multiple: true }).then(async hs => {
+      const files = [];
+      for (const h of hs) {
+        try { const file = await h.getFile(); files.push({ file, path: file.name, name: file.name, size: file.size }); } catch (e) {}
+      }
+      onLoaded(files);
+    }).catch(e => { if (e && e.name !== 'AbortError') folderPickFilesFallback(onLoaded); });
+  } else folderPickFilesFallback(onLoaded);
+}
 function folderOpenFile(it, ctx) {
   const show = text => {
     const ov = document.createElement('div');
@@ -184,10 +205,12 @@ function buildFolderUI(f, d, ctx) {
   pickRow.style.cssText = 'display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px';
   const btn = document.createElement('button');
   btn.type = 'button'; btn.textContent = '📁 ' + ctx.tr('选择本地目录'); btn.style.fontWeight = '600';
+  const btnF = document.createElement('button');
+  btnF.type = 'button'; btnF.textContent = '📄 ' + ctx.tr('选择文件'); btnF.style.fontWeight = '600';
   const dirName = document.createElement('span');
   dirName.style.cssText = 'font-size:12px;color:var(--text-3)';
   dirName.textContent = ctx.tr('未选择');
-  pickRow.appendChild(btn); pickRow.appendChild(dirName);
+  pickRow.appendChild(btn); pickRow.appendChild(btnF); pickRow.appendChild(dirName);
   const listWrap = document.createElement('div');
   listWrap.classList.add(ctx.hideCls);
   listWrap.innerHTML = '<div class="fbar"><label class="fall"><input type="checkbox" class="fall-ck"> <span>' + ctx.tr('全选') + '</span></label><span class="fcnt"></span></div><div class="fitems"></div>';
@@ -220,14 +243,28 @@ function buildFolderUI(f, d, ctx) {
     st.included = new Set(fall.checked ? st.files.map(x => x.path) : []);
     renderItems();
   };
-  btn.onclick = () => folderPick((files, dirN) => {
-    st.files = files; st.dirName = dirN || '';
-    st.included = new Set(files.filter(x => folderIsText(x.name)).slice(0, 30).map(x => x.path));
-    dirName.textContent = (st.dirName || ctx.tr('已选目录')) + ' · ' + ctx.tr(files.length + ' 个文件');
+  const applyFiles = (files, label) => {
+    // 合并去重（按 path），保留已有勾选状态
+    const seen = new Set(st.files.map(x => x.path));
+    const fresh = files.filter(x => !seen.has(x.path));
+    st.files = st.files.concat(fresh);
+    fresh.forEach(x => { if (folderIsText(x.name)) st.included.add(x.path); });
+    dirName.textContent = label + ' · ' + ctx.tr(st.files.length + ' 个文件');
     listWrap.classList.remove(ctx.hideCls);
     renderItems();
-    ctx.toast(ctx.tr('已加载待检目录（' + files.length + ' 个文件），勾选后随执行一并提交'));
+    ctx.toast(ctx.tr('已加载 ' + fresh.length + ' 个文件，勾选后随执行一并提交'));
+  };
+  btn.onclick = () => folderPick((files, dirN) => {
+    if (!files.length) { ctx.toast(ctx.tr('目录为空')); return; }
+    st.dirName = dirN || '';
+    applyFiles(files, st.dirName || ctx.tr('已选目录'));
   });
+  btnF.onclick = () => folderPickFiles(files => {
+    if (!files.length) return;
+    st.dirName = st.dirName || ctx.tr('手动选择');
+    applyFiles(files, ctx.tr('手动选择'));
+  });
+  st.apply = applyFiles;       // 供测试：直接注入文件列表
 }
 async function folderCollectText(fields, getBox) {
   let text = '', used = 0;
@@ -250,7 +287,7 @@ async function folderCollectText(fields, getBox) {
   }
   return text;
 }
-window.__folderTest = { folderIsText, folderFmtSize, buildFolderUI, folderPick, folderOpenFile, folderCollectText };
+window.__folderTest = { folderIsText, folderFmtSize, buildFolderUI, folderPick, folderPickFiles, folderOpenFile, folderCollectText };
 
 /* ===== 主流程 ===== */
 (async function main() {
