@@ -29,16 +29,21 @@ button:hover{border-color:var(--accent);color:var(--accent)}
 button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
 button.primary:hover{opacity:.9;color:#fff}
 button:disabled{opacity:.45;cursor:not-allowed}
+button.on{border-color:var(--accent);color:var(--accent);font-weight:600;background:var(--accent-soft)}
 .btnrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;align-items:center}
 .field{margin-bottom:14px}
 .field .fl{font-size:13px;font-weight:500;margin-bottom:3px}
 .field .fk{font-size:11px;color:var(--text-3);font-family:var(--mono);margin-left:6px;font-weight:400}
 .field .hint{font-size:11.5px;color:var(--text-3);margin-bottom:5px}
 .field label.ck{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text-2);cursor:pointer}
-.out{border:1px solid var(--border);border-radius:10px;background:#fbfbfc;min-height:160px;padding:16px;
-  font-size:13.5px;white-space:pre-wrap;word-break:break-word;overflow:auto}
+.out{border:1px solid #30363d;border-radius:10px;background:#0d1117;color:#e6edf3;min-height:160px;
+  max-height:520px;overflow:auto;padding:16px;font:12.5px/1.6 var(--mono);
+  white-space:pre-wrap;word-break:break-word}
+.out.md{white-space:normal;background:#fbfbfc;border-color:var(--border);color:var(--text);
+  font-family:inherit;font-size:13.5px}
 .out.pv{padding:0;background:#fff;white-space:normal;overflow:hidden}
 .out.pv iframe{width:100%;height:560px;border:none;display:block;background:#fff}
+.lktag{font-size:11px;margin-left:4px}
 .stat{font-size:12.5px;color:var(--text-2);margin-bottom:10px;min-height:16px}
 .seg{display:inline-flex;border:1px solid var(--border-strong);border-radius:8px;overflow:hidden;margin-bottom:10px}
 .seg button{border:none;border-radius:0;padding:5px 14px;font-size:12px}

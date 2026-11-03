@@ -36,6 +36,9 @@ Skill Forge is a **Manifest V3 browser extension** (works on Chrome / Edge / any
 | 🕘 | **Run History** | Last 50 runs with skill badges and result viewer (Markdown / rendered HTML); re-run with one click |
 | 🖱️ | **Context Menu** | Select text on any webpage → right-click to save it as a skill, or execute it with a chosen skill |
 | 🌍 | **Bilingual (中文 / EN)** | Full UI translation on every surface, remembered across pages; exported HTML files carry i18n too |
+| 🔗 | **Parameter Linkage (NEW v1.5)** | Fields can declare `showIf` conditions — a field only appears when an upstream select/checkbox matches, in both the workbench and exported pages |
+| ⌨️ | **Terminal-faithful Output (NEW v1.5)** | Results render in a terminal pane byte-for-byte identical to the raw stream — no trimming, no rewriting; Markdown/HTML rendering is an explicit toggle |
+| 🖥️ | **3-Column Workbench (NEW v1.5)** | Left: inputs & model config · Middle: execution result, history & pages · Right: embedded browser that live-renders HTML results (or shows an explicit "N/A" when there is none) |
 
 ## 🚀 Quick Start
 
@@ -60,7 +63,7 @@ Open `skill-forge-standalone.html` in any browser. Double-click and go. (Data st
 
 ## 📸 Screenshots
 
-| Workbench 工作台 | Generated Tool Page 生成工具页 |
+| Workbench 工作台 (3-column) | Generated Tool Page 生成工具页 |
 |---|---|
 | ![workbench](assets/screenshot-workbench.png) | ![tool page](assets/screenshot-toolpage.png) |
 

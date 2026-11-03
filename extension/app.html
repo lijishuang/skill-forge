@@ -24,19 +24,22 @@
   .step{display:flex;align-items:center;gap:6px;font-size:12px;background:rgba(255,255,255,.15);
     border-radius:99px;padding:4px 12px}
   .step.on{background:#fff;color:var(--accent);font-weight:600}
-  .banner{display:none;max-width:1400px;margin:14px auto -4px;padding:10px 16px;border-radius:10px;
+  .banner{display:none;max-width:1760px;margin:14px auto -4px;padding:10px 16px;border-radius:10px;
     font-size:13px;align-items:center;gap:10px}
   .banner.show{display:flex}
   .banner.save{background:var(--amber-soft);border:1px solid #fde68a;color:#92400e}
   .banner.exec{background:var(--accent-soft);border:1px solid var(--accent-border);color:#1d4ed8}
   .banner b{font-weight:600}
   .banner button{padding:4px 12px;font-size:12px}
-  main{display:grid;grid-template-columns:430px 1fr;gap:20px;padding:20px 28px;max-width:1400px;margin:0 auto}
-  @media(max-width:980px){main{grid-template-columns:1fr}}
+  /* 三栏布局：左=参数与配置，中=执行结果，右=内嵌浏览器 */
+  main{display:grid;grid-template-columns:390px minmax(0,1fr) 430px;gap:20px;padding:20px 28px;max-width:1760px;margin:0 auto}
+  @media(max-width:1360px){main{grid-template-columns:380px minmax(0,1fr)} .col-browser{grid-column:1/-1}}
+  @media(max-width:980px){main{grid-template-columns:1fr} .col-browser{grid-column:auto}}
   .card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:18px}
   .card h2{font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px;margin-bottom:12px}
   .card h2 .tag{font-size:11px;font-weight:500;color:var(--text-3);margin-left:auto}
-  .col{display:flex;flex-direction:column;gap:20px}
+  .col{display:flex;flex-direction:column;gap:20px;min-width:0}
+  .col-browser{position:sticky;top:14px;align-self:start}
   .drop{border:2px dashed var(--border-strong);border-radius:10px;padding:22px 16px;text-align:center;
     cursor:pointer;transition:.15s;color:var(--text-2)}
   .drop:hover,.drop.over{border-color:var(--accent);background:var(--accent-soft)}
@@ -70,8 +73,10 @@
   .skill-card .desc{font-size:12.5px;color:var(--text-2);margin-top:4px;max-height:60px;overflow:auto}
   .meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
   .chip{font-size:11px;background:#fff;border:1px solid var(--border);border-radius:99px;padding:2px 10px;color:var(--text-2)}
-  /* 结果 markdown 渲染 */
-  .out.md{white-space:normal}
+  /* 终端风格输出（执行结果与终端输出保持一致） */
+  .out{border:1px solid #30363d;border-radius:10px;background:#0d1117;color:#e6edf3;min-height:160px;
+    max-height:520px;overflow:auto;padding:16px;font:12.5px/1.6 var(--mono);white-space:pre-wrap;word-break:break-word}
+  .out.md{white-space:normal;background:#fbfbfc;border-color:var(--border);color:var(--text);font-family:inherit;font-size:13.5px}
   .out.md p{margin:6px 0}
   .out.md h3,.out.md h4,.out.md h5,.out.md h6{margin:12px 0 4px;font-size:1.05em}
   .out.md table{border-collapse:collapse;margin:8px 0;width:100%}
@@ -99,7 +104,7 @@
   .mini-ico{font-size:12px;padding:2px 7px;border-radius:6px;border:1px solid var(--border);background:#fff;cursor:pointer;line-height:1.4}
   .mini-ico:hover{border-color:var(--accent);background:var(--accent-soft)}
   .storewarn{background:#fef3c7;border:1px solid #fcd34d;color:#92400e;border-radius:10px;
-    padding:10px 14px;font-size:12.5px;margin-bottom:14px}
+    padding:10px 14px;font-size:12.5px;margin-bottom:14px;grid-column:1/-1}
   .badge.tool{background:#fef3c7;color:#b45309}
   .page-item .n{cursor:text}
   .page-item .n[contenteditable="true"]{outline:1px dashed var(--accent);border-radius:4px;padding:0 4px}
@@ -120,12 +125,21 @@
   .field .fl .req{color:#dc2626;font-size:11px}
   .field .fk{font-size:11px;color:var(--text-3);font-family:var(--mono);font-weight:400}
   .field .hint{font-size:11.5px;color:var(--text-3);margin-bottom:5px}
+  .field.hidden{display:none}
+  .field .lkbtn{margin-left:auto;font-size:11px;padding:1px 8px}
+  .field .lkbtn.on{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+  /* 参数联动编辑器 */
+  .link-editor{margin-top:8px;border:1px solid var(--accent-border);background:var(--accent-soft);
+    border-radius:8px;padding:10px 12px;font-size:12px;color:var(--text-2)}
+  .link-editor .row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:6px}
+  .link-editor select{width:auto;font-size:12px;padding:4px 8px}
+  .link-editor .chk{display:inline-flex;align-items:center;gap:4px;margin-right:10px;font-size:12px;cursor:pointer}
+  .link-editor .chk input{width:auto}
+  .link-editor .note{font-size:11px;color:var(--text-3)}
+  .link-editor .btnrow{margin-top:4px;margin-bottom:0}
+  .link-editor button{padding:3px 12px;font-size:12px}
   .empty{border:1px dashed var(--border-strong);border-radius:10px;padding:40px 20px;text-align:center;color:var(--text-3)}
   .empty .big{font-size:30px;margin-bottom:8px}
-  .out{border:1px solid var(--border);border-radius:10px;background:#fbfbfc;min-height:120px;
-    padding:16px;font-size:13.5px;white-space:pre-wrap;word-break:break-word}
-  .out.preview{padding:0;background:#fff;overflow:hidden;white-space:normal}
-  .out.preview iframe{width:100%;height:560px;border:none;display:block;background:#fff}
   .seg{display:inline-flex;border:1px solid var(--border-strong);border-radius:8px;overflow:hidden;margin-bottom:10px}
   .seg button{border:none;border-radius:0;padding:5px 14px;font-size:12px;background:var(--panel)}
   .seg button.on{background:var(--accent);color:#fff;font-weight:600}
@@ -141,6 +155,17 @@
   .mode-badge{font-size:11px;border-radius:99px;padding:2px 10px;font-weight:500}
   .mode-heuristic{background:var(--green-soft);color:var(--green)}
   .mode-ai{background:var(--accent-soft);color:var(--accent)}
+  /* 右栏内嵌浏览器 */
+  .browser-card{display:flex;flex-direction:column;min-height:560px}
+  .browser-head{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+  .browser-head h2{margin:0}
+  .browser-tip{font-size:11.5px;color:var(--text-3);margin-bottom:10px}
+  #browserFrame{width:100%;flex:1;min-height:460px;border:1px solid var(--border);border-radius:10px;background:#fff;display:none}
+  #browserEmpty{flex:1;min-height:460px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    color:var(--text-3);border:1px dashed var(--border-strong);border-radius:10px;text-align:center;padding:24px;gap:6px}
+  #browserEmpty .big{font-size:34px}
+  #browserEmpty b{color:var(--text-2);font-size:14px}
+  #browserEmpty span{font-size:12px;line-height:1.7}
 </style>
 </head>
 <body>
@@ -172,8 +197,9 @@
 
 <main>
   <div class="storewarn hidden" id="storeWarn">⚠️ 当前环境拦截了浏览器本地存储（常见于内嵌预览面板），数据<strong>仅本次会话有效</strong>，刷新后会丢失。请用浏览器直接打开本文件，或安装浏览器插件版以永久保存。</div>
-  <!-- 左列 -->
-  <div class="col">
+
+  <!-- 左栏：上传 / 参数 / 模型配置 -->
+  <div class="col col-left">
 
     <div class="card" id="libCard">
       <h2>📚 技能库 <span class="tag" id="libCount"></span></h2>
@@ -209,6 +235,23 @@
       </div>
     </div>
 
+    <div class="card" id="formCard">
+      <h2>② 输入参数 <span class="tag" id="formTag">尚未生成</span></h2>
+      <div id="formArea" class="empty">
+        <div class="big">🧩</div>
+        上传并解析 Skill 后点击「生成界面」
+      </div>
+      <div class="btnrow" style="margin-top:14px">
+        <button class="primary" id="btnRun" disabled style="font-size:14px;padding:9px 26px">▶ 用 LLM 执行此 Skill</button>
+        <button id="btnReset" disabled>清空</button>
+      </div>
+      <div class="btnrow">
+        <button id="btnOpenPage" disabled title="把当前这个界面打包成一个独立 HTML 工具页，在新标签页单独打开" style="border-color:var(--accent);color:var(--accent);font-weight:600">🌐 新标签页打开此界面</button>
+        <button id="btnDlPage" disabled title="下载为单文件 HTML，可双击打开、发给别人">⬇ 保存为 .html</button>
+        <button id="btnSavePage" disabled title="保存到「我的页面」，下次一键打开直接用">📥 存入我的页面</button>
+      </div>
+    </div>
+
     <div class="card" id="cfg">
       <h2>⚙ 模型配置 <span class="tag">存于插件本地存储</span></h2>
       <details open>
@@ -228,38 +271,19 @@
 
   </div>
 
-  <!-- 右列 -->
-  <div class="col">
+  <!-- 中栏：执行结果 / 历史 / 我的页面 -->
+  <div class="col col-mid">
     <div class="card">
-      <h2>② 生成的工具界面 <span class="tag" id="formTag">尚未生成</span></h2>
-      <div id="formArea" class="empty">
-        <div class="big">🧩</div>
-        上传并解析 Skill 后点击「生成界面」
-      </div>
-      <div class="btnrow" style="margin-top:14px">
-        <button class="primary" id="btnRun" disabled style="font-size:14px;padding:9px 26px">▶ 用 LLM 执行此 Skill</button>
-        <button id="btnReset" disabled>清空</button>
-        <button id="btnOpenPage" disabled title="把当前这个界面打包成一个独立 HTML 工具页，在新标签页单独打开" style="border-color:var(--accent);color:var(--accent);font-weight:600">🌐 新标签页打开此界面</button>
-        <button id="btnDlPage" disabled title="下载为单文件 HTML，可双击打开、发给别人">⬇ 保存为 .html</button>
-        <button id="btnSavePage" disabled title="保存到「我的页面」，下次一键打开直接用">📥 存入我的页面</button>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>③ 执行结果</h2>
+      <h2>③ 执行结果 <span class="tag" id="outTag">与终端输出保持一致</span></h2>
       <div class="statusbar"><span class="dot" id="runDot"></span><span id="runStatus">待执行</span> <span id="tokenInfo"></span></div>
       <div class="seg hidden" id="segBar">
-        <button id="segPreview" class="on">🖼 页面预览</button>
-        <button id="segCode">⌨ 源码</button>
+        <button id="segTerm" class="on">⌨ 终端</button>
+        <button id="segMd">📝 渲染</button>
       </div>
-      <div class="out preview hidden" id="outPreviewWrap"><iframe id="outPreview" sandbox="allow-scripts allow-forms allow-popups allow-modals"></iframe></div>
-      <div class="out" id="output">执行结果将在这里流式输出…</div>
+      <div class="out term" id="output">执行结果将在这里流式输出…</div>
       <div class="btnrow" style="margin-top:12px">
         <button id="btnCopy" disabled>复制结果</button>
         <button id="btnDownload" disabled>下载 .md</button>
-        <button id="btnOpenHtml" class="hidden" style="border-color:var(--accent);color:var(--accent);font-weight:600">🌐 单独打开为 HTML 页面</button>
-        <button id="btnDlHtml" class="hidden">下载 .html</button>
-        <button id="btnSaveHtmlPage" class="hidden" style="border-color:var(--accent);color:var(--accent);font-weight:600">📥 存入我的页面</button>
       </div>
     </div>
 
@@ -280,6 +304,28 @@
         </span>
       </h2>
       <div id="pageList"><p style="font-size:12px;color:var(--text-3)">还没有保存的页面。把生成的界面或结果里的 HTML 页面「存入我的页面」，下次在这里（或插件弹窗）点击即可直接打开使用。</p></div>
+    </div>
+  </div>
+
+  <!-- 右栏：内嵌浏览器 -->
+  <div class="col col-browser">
+    <div class="card browser-card">
+      <div class="browser-head">
+        <h2>🌐 内嵌浏览器</h2>
+        <span class="tag" id="browserTag">不涉及</span>
+      </div>
+      <div class="browser-tip" id="browserTip">执行结果若包含 HTML 页面，将在这里实时渲染；纯文本结果不涉及</div>
+      <div id="browserEmpty">
+        <div class="big">🛰️</div>
+        <b>不涉及</b>
+        <span>该结果不包含 HTML 页面。<br>若输出中包含 HTML，将自动在此渲染预览。</span>
+      </div>
+      <iframe id="browserFrame" sandbox="allow-scripts allow-forms allow-popups allow-modals" title="内嵌浏览器"></iframe>
+      <div class="btnrow">
+        <button id="brOpen" class="hidden" style="border-color:var(--accent);color:var(--accent);font-weight:600">🌐 新标签页打开</button>
+        <button id="brDl" class="hidden">⬇ 下载 .html</button>
+        <button id="brSave" class="hidden">📥 存入我的页面</button>
+      </div>
     </div>
   </div>
 </main>

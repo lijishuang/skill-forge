@@ -338,45 +338,163 @@ $('btnViewRaw').onclick = () => {
   w.document.title = SKILL.name;
 };
 
+/* ===== 参数联动 =====
+   字段可声明 showIf = { key: 父字段key, values: ['值1','值2'] }，
+   仅当父字段当前取值落在 values 内时该字段才显示；隐藏字段不参与必填校验，也不会进入执行参数。 */
+function fieldValue(f) {
+  const el = document.querySelector(`[data-key="${f.key}"]`);
+  if (!el) return '';
+  if (f.type === 'checkbox') return el.checked ? '是' : '否';
+  return (el.value || '').trim();
+}
+
+function applyLinkage() {
+  FIELDS.forEach(f => {
+    f._hidden = false;
+    if (f.showIf && f.showIf.key) {
+      const p = FIELDS.find(x => x.key === f.showIf.key);
+      if (p) {
+        const v = fieldValue(p);
+        const vals = (f.showIf.values || []).map(s => String(s).trim());
+        f._hidden = !vals.includes(v);
+      }
+    }
+    const d = document.querySelector(`.field[data-fkey="${f.key}"]`);
+    if (d) d.classList.toggle('hidden', !!f._hidden);
+  });
+}
+/* 表单控件变化时自动重算联动（事件委托，无需每次 render 重新绑定） */
+document.addEventListener('change', e => {
+  if (e.target && e.target.closest && e.target.closest('#formArea')) applyLinkage();
+});
+document.addEventListener('input', e => {
+  const t = e.target;
+  if (t && t.tagName === 'TEXTAREA' && t.closest && t.closest('#formArea')) applyLinkage();
+});
+
+/* 单个字段的联动编辑器（内嵌在字段下方） */
+function buildLinkEditor(f) {
+  const ed = document.createElement('div');
+  ed.className = 'link-editor';
+  const others = FIELDS.filter(x => x.key !== f.key &&
+    (x.type === 'select' || x.type === 'checkbox' || (x.options && x.options.length)));
+  if (!others.length) {
+    ed.innerHTML = `<span class="note">${escapeHtml(I18N.tr('暂无可作为联动条件的字段：需要至少一个 select / checkbox 类型字段'))}</span>`;
+    return ed;
+  }
+  const cur = f.showIf || { key: others[0].key, values: [] };
+  const row1 = document.createElement('div'); row1.className = 'row';
+  row1.appendChild(document.createTextNode(I18N.tr('当字段')));
+  const sel = document.createElement('select');
+  others.forEach(o => {
+    const op = document.createElement('option');
+    op.value = o.key; op.textContent = (o.label || o.key) + ' (' + o.key + ')';
+    if (o.key === cur.key) op.selected = true;
+    sel.appendChild(op);
+  });
+  row1.appendChild(sel);
+  row1.appendChild(document.createTextNode(I18N.tr('取以下值时，才显示本字段：')));
+  ed.appendChild(row1);
+
+  const row2 = document.createElement('div'); row2.className = 'row';
+  const parent = () => FIELDS.find(x => x.key === sel.value);
+  const renderChecks = () => {
+    row2.innerHTML = '';
+    const p = parent();
+    const opts = !p ? [] :
+      p.type === 'checkbox' ? ['是', '否'] :
+      (p.options && p.options.length ? p.options : ['默认']);
+    opts.forEach(o => {
+      const lab = document.createElement('label'); lab.className = 'chk';
+      const cb = document.createElement('input'); cb.type = 'checkbox'; cb.value = o;
+      cb.checked = (cur.values || []).includes(o);
+      lab.appendChild(cb); lab.appendChild(document.createTextNode(o));
+      row2.appendChild(lab);
+    });
+    if (!opts.length) row2.innerHTML = `<span class="note">${escapeHtml(I18N.tr('该字段暂无选项'))}</span>`;
+  };
+  sel.addEventListener('change', renderChecks);
+  renderChecks();
+  ed.appendChild(row2);
+
+  const row3 = document.createElement('div'); row3.className = 'btnrow';
+  const ok = document.createElement('button'); ok.className = 'primary'; ok.textContent = I18N.tr('保存联动');
+  ok.onclick = () => {
+    const vals = [...row2.querySelectorAll('input:checked')].map(c => c.value);
+    if (vals.length) f.showIf = { key: sel.value, values: vals };
+    else f.showIf = null;
+    applyLinkage(); renderForm(); toast(f.showIf ? '联动规则已保存' : '已清除联动');
+  };
+  const clr = document.createElement('button'); clr.textContent = I18N.tr('清除联动');
+  clr.onclick = () => { f.showIf = null; applyLinkage(); renderForm(); toast('已清除联动'); };
+  row3.appendChild(ok); row3.appendChild(clr);
+  ed.appendChild(row3);
+  return ed;
+}
+
 /* ===== 界面生成 ===== */
+function fieldHeader(f, withReq) {
+  return `<div class="fl">${escapeHtml(f.label || f.key)}${withReq ? ' <span class="req">' + I18N.tr('必填') + '</span>' : ''}
+    <span class="fk">${escapeHtml(f.key)}</span>
+    <button type="button" class="mini-ico lkbtn" title="${escapeHtml(I18N.tr('设置参数联动（根据其他字段的值决定是否显示本字段）'))}">🔗 ${escapeHtml(I18N.tr('联动'))}</button></div>` +
+    (f.hint ? `<div class="hint">${escapeHtml(f.hint)}</div>` : '');
+}
+
+function bindLinkBtn(d, f) {
+  const btn = d.querySelector('.lkbtn');
+  if (!btn) return;
+  btn.classList.toggle('on', !!f.showIf);
+  btn.onclick = e => {
+    e.preventDefault();
+    const old = d.querySelector('.link-editor');
+    if (old) { old.remove(); return; }
+    document.querySelectorAll('#formArea .link-editor').forEach(x => x.remove());
+    d.appendChild(buildLinkEditor(f));
+  };
+}
+
 function renderForm() {
   const area = $('formArea'); area.className = ''; area.style.cssText = ''; area.innerHTML = '';
   if (!FIELDS.length) { area.innerHTML = '<p style="color:var(--text-3)">暂无字段。</p>'; return; }
   FIELDS.forEach(f => {
     const d = document.createElement('div'); d.className = 'field';
+    d.dataset.fkey = f.key;
     let ctrl;
     if (f.type === 'select') {
       ctrl = document.createElement('select');
       (f.options && f.options.length ? f.options : ['默认']).forEach(o => {
         const op = document.createElement('option'); op.value = op.textContent = o; ctrl.appendChild(op); });
+      d.innerHTML = fieldHeader(f, false);
+      d.appendChild(ctrl);
     } else if (f.type === 'textarea') {
       ctrl = document.createElement('textarea'); ctrl.style.minHeight = '80px';
+      d.innerHTML = fieldHeader(f, false);
+      d.appendChild(ctrl);
     } else if (f.type === 'checkbox') {
       ctrl = document.createElement('input'); ctrl.type = 'checkbox'; ctrl.style.width = 'auto';
       const wrap = document.createElement('label');
       wrap.style.cssText = 'display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text-2);cursor:pointer';
       wrap.appendChild(ctrl);
-      wrap.appendChild(document.createTextNode('启用'));
+      wrap.appendChild(document.createTextNode(I18N.tr('启用')));
       ctrl.dataset.key = f.key;
-      d.innerHTML = `<div class="fl">${escapeHtml(f.label || f.key)}
-        <span class="fk">${escapeHtml(f.key)}</span></div>` +
-        (f.hint ? `<div class="hint">${escapeHtml(f.hint)}</div>` : '');
-      d.appendChild(wrap); area.appendChild(d);
-      return;
+      d.innerHTML = fieldHeader(f, false);
+      d.appendChild(wrap);
     } else {
       ctrl = document.createElement('input');
       ctrl.type = { number: 'number', date: 'date', email: 'email', url: 'url' }[f.type] || 'text';
+      d.innerHTML = fieldHeader(f, false);
+      d.appendChild(ctrl);
     }
     if (f.placeholder) ctrl.placeholder = f.placeholder;
     ctrl.dataset.key = f.key;
-    d.innerHTML = `<div class="fl">${escapeHtml(f.label || f.key)} <span class="req">必填</span>
-      <span class="fk">${escapeHtml(f.key)}</span></div>` +
-      (f.hint ? `<div class="hint">${escapeHtml(f.hint)}</div>` : '');
-    d.appendChild(ctrl); area.appendChild(d);
+    bindLinkBtn(d, f);
+    area.appendChild(d);
   });
+  applyLinkage();
   // 右键导入的执行内容自动填入
   if (window._pendingExec) {
-    const firstText = FIELDS.find(f => f.type === 'textarea') || FIELDS[0];
+    const firstText = FIELDS.find(f => f.type === 'textarea' && !f._hidden) ||
+      FIELDS.find(f => !f._hidden);
     if (firstText) {
       const el = document.querySelector(`[data-key="${firstText.key}"]`);
       if (el && !el.value.trim()) {
@@ -388,7 +506,8 @@ function renderForm() {
   }
   $('btnRun').disabled = false; $('btnReset').disabled = false;
   $('btnOpenPage').disabled = false; $('btnDlPage').disabled = false; $('btnSavePage').disabled = false;
-  $('formTag').textContent = I18N.tr(`${FIELDS.length} 个字段 · ${mode === 'ai' ? 'AI 设计' : mode === 'manual' ? '手动' : '自动解析'}`);
+  const linked = FIELDS.filter(f => f.showIf).length;
+  $('formTag').textContent = I18N.tr(`${FIELDS.length} 个字段${linked ? ' · ' + linked + ' 个联动' : ''} · ${mode === 'ai' ? 'AI 设计' : mode === 'manual' ? '手动' : '自动解析'}`);
   $('formTag').className = 'tag mode-badge ' + (mode === 'ai' ? 'mode-ai' : 'mode-heuristic');
   step(3);
 }
@@ -423,14 +542,20 @@ $('btnAIGen').onclick = async () => {
     .map(r => `\n--- 附件 ${r.name} ---\n${r.content.slice(0, 6000)}`).join('');
   const sys = '你是 UI 设计师。用户会给一个 AI Skill 的完整定义，请为它设计一个填写表单界面。' +
     '只输出 JSON 数组，不要任何其他文字。每个元素：{"key":"英文变量名","label":"中文显示名","type":"text|textarea|number|select|date|checkbox","hint":"一句中文填写提示","options":["select 时的选项"]}。' +
-    '字段 2-6 个，覆盖该 Skill 运行所需的全部输入；按语义选择类型：长文本用 textarea，有限选项用 select，日期用 date，是/否开关用 checkbox，数量用 number。';
+    '字段 2-6 个，覆盖该 Skill 运行所需的全部输入；按语义选择类型：长文本用 textarea，有限选项用 select，日期用 date，是/否开关用 checkbox，数量用 number。' +
+    '参数联动：仅当某个字段确实依赖另一字段的取值（选了某些值才需要填写、否则无意义）时，为它加可选字段 "showIf":{"key":"父字段key","values":["触发显示的选项值"]}；values 取父字段 select 的选项，或 checkbox 的"是"/"否"。大多数字段不需要 showIf，不要滥用。';
   const user = `Skill 名称：${SKILL.name}\n描述：${SKILL.description}\n\n正文：\n${SKILL.body.slice(0, 8000)}${refsText}`;
   setRun(true, 'AI 正在分析 Skill 并设计界面…');
   try {
     const text = await chat([{ role: 'system', content: sys }, { role: 'user', content: user }], false, c);
     const j = JSON.parse(text.replace(/^```(json)?|```$/g, '').trim());
     if (!Array.isArray(j) || !j.length) throw new Error('返回格式异常');
-    FIELDS = j.map(f => ({ key: f.key, label: f.label || f.key, type: f.type || 'text', hint: f.hint || '', options: f.options || null }));
+    FIELDS = j.map(f => ({
+      key: f.key, label: f.label || f.key, type: f.type || 'text', hint: f.hint || '',
+      options: f.options || null,
+      showIf: (f.showIf && f.showIf.key && Array.isArray(f.showIf.values) && f.showIf.values.length)
+        ? { key: f.showIf.key, values: f.showIf.values.map(String) } : null
+    }));
     mode = 'ai';
     $('skMode').textContent = I18N.tr('AI 设计'); $('skMode').className = 'mode-badge mode-ai';
     renderForm(); toast(`AI 设计了 ${FIELDS.length} 个字段的界面`);
@@ -446,22 +571,34 @@ $('btnReset').onclick = () => {
   $('formArea').innerHTML = '<div class="big">🧩</div>上传并解析 Skill 后点击「生成界面」';
   $('formTag').textContent = I18N.tr('尚未生成'); $('btnRun').disabled = true; $('btnReset').disabled = true;
   $('output').removeAttribute('data-noi18n');
+  $('output').classList.remove('md'); $('output').classList.add('term');
   $('output').textContent = I18N.tr('执行结果将在这里流式输出…');
+  $('segBar').classList.add('hidden');
   $('btnOpenPage').disabled = true; $('btnDlPage').disabled = true; $('btnSavePage').disabled = true;
+  // 内嵌浏览器复位为「不涉及」
+  resultHtml = null;
+  $('browserFrame').removeAttribute('srcdoc'); $('browserFrame').style.display = 'none';
+  $('browserEmpty').classList.remove('hidden');
+  $('browserTag').textContent = I18N.tr('不涉及');
+  ['brOpen', 'brDl', 'brSave'].forEach(id => $(id).classList.add('hidden'));
 };
 
 async function run() {
   if (running) return;
   const c = await getCfg();
   if (!c.base || !c.key || !c.model) { toast('请先填写模型配置'); return; }
+  applyLinkage();
   const values = {};
+  let visibleCount = 0;
   for (const f of FIELDS) {
+    if (f._hidden) continue;   // 联动隐藏的字段不参与执行
     const el = document.querySelector(`[data-key="${f.key}"]`);
-    if (f.type === 'checkbox') { values[f.key] = el && el.checked ? '是' : '否'; continue; }
+    if (f.type === 'checkbox') { values[f.key] = el && el.checked ? '是' : '否'; visibleCount++; continue; }
     const v = (el ? el.value.trim() : '');
     if (!v) { toast(`请填写「${f.label || f.key}」`); el && el.focus(); return; }
-    values[f.key] = v;
+    values[f.key] = v; visibleCount++;
   }
+  if (!visibleCount) { toast('没有可见的输入字段，请检查参数联动设置'); return; }
   window._lastValues = values;
   const refText = SKILL.refs.filter(r => !r.skipped && r.content)
     .map(r => `\n\n### 参考文件：${r.name}\n${r.content.slice(0, 8000)}`).join('');
@@ -469,18 +606,19 @@ async function run() {
   const user = '请根据上述 Skill 指令处理以下输入：\n' +
     Object.entries(values).map(([k, v]) => `【${k}】\n${v}`).join('\n\n') +
     '\n\n直接输出 Skill 要求的最终结果，不要解释执行过程。';
-  setRun(true, '正在调用模型…'); $('output').classList.remove('md'); $('output').textContent = '';
+  setRun(true, '正在调用模型…'); $('output').classList.remove('md'); $('output').classList.add('term');
+  $('output').textContent = '';
   $('output').setAttribute('data-noi18n', '1');
   try {
     const used = await chat([{ role: 'system', content: sys }, { role: 'user', content: user }], true, c);
-    setRun(false, 'ok', `完成（输出 ${lastResult.length} 字符${used ? ' · ' + used + ' tokens' : ''}）`);
+    setRun(false, `完成（输出 ${lastResult.length} 字符${used ? ' · ' + used + ' tokens' : ''}）`, 'ok');
     $('btnCopy').disabled = false; $('btnDownload').disabled = false;
+    // 结果保持终端原样输出；需要美化可切「渲染」视图
+    setResultView('term');
     updateResultActions();
-    // 非 HTML 结果用 markdown 渲染（表格/代码块/列表）
-    if (!resultHtml) { $('output').classList.add('md'); $('output').innerHTML = renderMarkdown(lastResult); }
     await saveHistory();
   } catch (e) {
-    setRun(false, 'err', '执行失败：' + e.message);
+    setRun(false, '执行失败：' + e.message, 'err');
     $('output').textContent = '❌ ' + e.message + '\n\n' + I18N.tr('常见原因：\n1. API 地址不正确（应以 /v1 结尾）\n2. Key 无效或额度不足\n3. 网络无法访问该接口');
   }
 }
@@ -563,27 +701,40 @@ function extractHtml(text) {
   return cand;
 }
 
-function setResultSeg(preview) {
-  $('segPreview').classList.toggle('on', preview);
-  $('segCode').classList.toggle('on', !preview);
-  $('outPreviewWrap').classList.toggle('hidden', !preview);
-  $('output').classList.toggle('hidden', preview);
-}
-
-function updateResultActions() {
-  resultHtml = extractHtml(lastResult || $('output').textContent || '');
-  ['btnOpenHtml', 'btnDlHtml', 'segBar', 'btnSaveHtmlPage'].forEach(id => $(id).classList.toggle('hidden', !resultHtml));
-  if (resultHtml) {
-    $('outPreview').srcdoc = resultHtml;
-    setResultSeg(true);
-    toast('检测到 HTML 页面，已渲染预览，可单独打开');
+/* ===== 结果视图：默认终端（与终端输出完全一致），可选 Markdown 渲染 ===== */
+let resultView = 'term';
+function setResultView(v) {
+  resultView = v;
+  $('segTerm').classList.toggle('on', v === 'term');
+  $('segMd').classList.toggle('on', v === 'md');
+  if (v === 'md') {
+    $('output').classList.add('md'); $('output').classList.remove('term');
+    $('output').innerHTML = renderMarkdown(lastResult);
   } else {
-    $('outPreviewWrap').classList.add('hidden');
-    $('output').classList.remove('hidden');
+    $('output').classList.remove('md'); $('output').classList.add('term');
+    $('output').textContent = lastResult;
   }
 }
-$('segPreview').onclick = () => setResultSeg(true);
-$('segCode').onclick = () => setResultSeg(false);
+$('segTerm').onclick = () => setResultView('term');
+$('segMd').onclick = () => setResultView('md');
+
+function updateResultActions() {
+  resultHtml = extractHtml(lastResult || '');
+  $('segBar').classList.toggle('hidden', !lastResult);
+  const bFrame = $('browserFrame'), bEmpty = $('browserEmpty');
+  if (resultHtml) {
+    bFrame.srcdoc = resultHtml; bFrame.style.display = 'block';
+    bEmpty.classList.add('hidden');
+    $('browserTag').textContent = I18N.tr('已渲染结果页面');
+    ['brOpen', 'brDl', 'brSave'].forEach(id => $(id).classList.remove('hidden'));
+    toast('检测到 HTML 页面，已在内嵌浏览器中渲染');
+  } else {
+    bFrame.removeAttribute('srcdoc'); bFrame.style.display = 'none';
+    bEmpty.classList.remove('hidden');
+    $('browserTag').textContent = I18N.tr('不涉及');
+    ['brOpen', 'brDl', 'brSave'].forEach(id => $(id).classList.add('hidden'));
+  }
+}
 /* 打开一个生成出来的 HTML 页面：
    扩展内走 doc.html + 沙箱页（blob 会继承扩展 CSP，页面里的脚本会被拦）；无插件环境直接用 blob */
 async function openHtmlPage(html, title) {
@@ -603,16 +754,21 @@ async function openHtmlPage(html, title) {
   window.open(htmlUrl, '_blank');
 }
 
-$('btnOpenHtml').onclick = async () => {
+/* 内嵌浏览器栏的操作按钮 */
+$('brOpen').onclick = async () => {
   if (!resultHtml) return;
   await openHtmlPage(resultHtml, (SKILL ? SKILL.name : '页面') + '-页面');
   toast('已在新标签页打开 HTML 页面');
 };
-$('btnDlHtml').onclick = () => {
+$('brDl').onclick = () => {
   if (!resultHtml) return;
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([resultHtml], { type: 'text/html' }));
   a.download = (SKILL ? SKILL.name : 'result') + '-页面.html'; a.click();
+};
+$('brSave').onclick = async () => {
+  if (!resultHtml) return;
+  await addPage({ name: (SKILL ? SKILL.name : '页面') + '-页面', type: 'static', html: resultHtml });
 };
 
 /* ===== 独立工具页：界面 → 可单独打开的 HTML 页面 ===== */
@@ -633,7 +789,8 @@ function toolPayload(skill, fields, cfg, includeKey) {
     body: skill.body || '',
     refs: (skill.refs || []).filter(r => !r.skipped && r.content)
       .map(r => ({ name: r.name, content: String(r.content).slice(0, 8000) })),
-    fields: fields.map(f => ({ key: f.key, label: f.label || f.key, type: f.type || 'text', hint: f.hint || '', options: f.options || null })),
+    fields: fields.map(f => ({ key: f.key, label: f.label || f.key, type: f.type || 'text', hint: f.hint || '',
+      options: f.options || null, showIf: f.showIf ? { key: f.showIf.key, values: [...f.showIf.values] } : null })),
     cfg: { base: cfg.base || '', model: cfg.model || '', key: includeKey ? (cfg.key || '') : '' }
   }).replace(/</g, '\\u003c');
 }
@@ -758,7 +915,7 @@ async function saveHistory() {
   try {
     const entry = {
       id: uid(), skillName: SKILL.name, skillRaw: SKILL.raw, refs: SKILL.refs,
-      fieldsSchema: FIELDS.map(f => ({ ...f })), values: window._lastValues || {},
+      fieldsSchema: FIELDS.map(f => { const { _hidden, ...rest } = f; return rest; }), values: window._lastValues || {},
       result: lastResult.slice(0, 200000), isHtml: !!resultHtml, html: resultHtml || '',
       mode: mode || 'heuristic', date: Date.now()
     };
@@ -962,11 +1119,7 @@ $('btnSavePage').onclick = async () => {
   });
 };
 
-/* 保存入口 ②：把执行结果里的 HTML 页面存入 */
-$('btnSaveHtmlPage').onclick = async () => {
-  if (!resultHtml) return;
-  await addPage({ name: (SKILL ? SKILL.name : '页面') + '-页面', type: 'static', html: resultHtml });
-};
+/* 保存入口 ②：内嵌浏览器栏的「存入我的页面」（见 brSave） */
 
 /* 保存入口 ③：历史查看器里的 HTML 存入 */
 $('vwSavePage').onclick = async () => {

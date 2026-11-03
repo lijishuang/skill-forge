@@ -131,7 +131,9 @@ async function loadPayload() {
   /* 表单 */
   D.fields.forEach(f => {
     const d = document.createElement('div'); d.className = 'field';
-    d.innerHTML = '<div class="fl">' + escapeHtml(f.label) + '<span class="fk">' + escapeHtml(f.key) + '</span></div>' +
+    d.dataset.fkey = f.key;
+    const lkTag = f.showIf ? '<span class="lktag" title="' + I18N.tr('此字段按参数联动显示') + '">🔗</span>' : '';
+    d.innerHTML = '<div class="fl">' + escapeHtml(f.label) + lkTag + '<span class="fk">' + escapeHtml(f.key) + '</span></div>' +
       (f.hint ? '<div class="hint">' + escapeHtml(f.hint) + '</div>' : '');
     let ctrl;
     if (f.type === 'select') {
@@ -144,7 +146,7 @@ async function loadPayload() {
     } else if (f.type === 'checkbox') {
       ctrl = document.createElement('input'); ctrl.type = 'checkbox'; ctrl.style.width = 'auto';
       const lab = document.createElement('label'); lab.className = 'ck';
-      lab.appendChild(ctrl); lab.appendChild(document.createTextNode('启用'));
+      lab.appendChild(ctrl); lab.appendChild(document.createTextNode(I18N.tr('启用')));
       ctrl.dataset.key = f.key; d.appendChild(lab); $('form').appendChild(d); return;
     } else {
       ctrl = document.createElement('input');
@@ -154,6 +156,31 @@ async function loadPayload() {
     d.appendChild(ctrl);
     $('form').appendChild(d);
   });
+
+  /* 参数联动：根据父字段取值显示/隐藏字段，隐藏字段不参与校验与执行 */
+  function fieldValue(f) {
+    const el = document.querySelector('#form [data-key="' + f.key + '"]');
+    if (!el) return '';
+    if (f.type === 'checkbox') return el.checked ? '是' : '否';
+    return (el.value || '').trim();
+  }
+  function applyLinkage() {
+    D.fields.forEach(f => {
+      f._hidden = false;
+      if (f.showIf && f.showIf.key) {
+        const p = D.fields.find(x => x.key === f.showIf.key);
+        if (p) {
+          const v = fieldValue(p);
+          const vals = (f.showIf.values || []).map(s => String(s).trim());
+          f._hidden = !vals.includes(v);
+        }
+      }
+      const d = document.querySelector('#form .field[data-fkey="' + f.key + '"]');
+      if (d) d.classList.toggle('hide', !!f._hidden);
+    });
+  }
+  $('form').addEventListener('change', applyLinkage);
+  applyLinkage();
 
   retr();
 
@@ -180,6 +207,7 @@ async function loadPayload() {
     document.querySelectorAll('#form [data-key]').forEach(el => {
       if (el.type === 'checkbox') el.checked = false; else el.value = '';
     });
+    applyLinkage();
   };
 
   function setSeg(pv) {
@@ -199,14 +227,18 @@ async function loadPayload() {
     if (running) return;
     const base = $('cBase').value.trim(), key = $('cKey').value.trim(), model = $('cModel').value.trim();
     if (!base || !key || !model) { toast('请先填写模型配置（地址 / Key / 模型）'); return; }
+    applyLinkage();
     const values = {};
+    let visibleCount = 0;
     for (const f of D.fields) {
+      if (f._hidden) continue;   // 联动隐藏的字段不参与执行
       const el = document.querySelector('#form [data-key="' + f.key + '"]');
-      if (f.type === 'checkbox') { values[f.key] = el && el.checked ? '是' : '否'; continue; }
+      if (f.type === 'checkbox') { values[f.key] = el && el.checked ? '是' : '否'; visibleCount++; continue; }
       const v = el ? el.value.trim() : '';
       if (!v) { toast('请填写「' + f.label + '」'); if (el) el.focus(); return; }
-      values[f.key] = v;
+      values[f.key] = v; visibleCount++;
     }
+    if (!visibleCount) { toast('没有可见的输入字段，请检查参数联动设置'); return; }
     let refText = '';
     (D.refs || []).forEach(r => { refText += '\n\n### 参考文件：' + r.name + '\n' + String(r.content).slice(0, 8000); });
     const sys = '你是一个执行「Skill」的助手。\n# Skill 名称\n' + D.name +
@@ -218,8 +250,9 @@ async function loadPayload() {
     running = true; $('btnRun').disabled = true;
     $('out').setAttribute('data-noi18n', '1');
     $('stat').textContent = I18N.tr('正在调用模型…');
-    $('out').classList.remove('md'); $('out').textContent = '';
+    $('out').classList.remove('md'); $('out').classList.add('term'); $('out').textContent = '';
     $('seg').classList.add('hide'); $('pvWrap').classList.add('hide'); $('out').classList.remove('hide');
+    $('btnRender').classList.add('hide');
     try {
       const res = await fetch(base.replace(/\/+$/, '') + '/chat/completions', {
         method: 'POST',
@@ -259,6 +292,20 @@ async function loadPayload() {
     running = false; $('btnRun').disabled = false;
   }
 
+  /* 结果视图：默认终端原样输出，可切换 Markdown 渲染 */
+  function setView(md) {
+    if (md) {
+      $('out').classList.add('md'); $('out').classList.remove('term');
+      $('out').innerHTML = renderMarkdown(lastResult);
+      $('btnRender').classList.add('on');
+    } else {
+      $('out').classList.remove('md'); $('out').classList.add('term');
+      $('out').textContent = lastResult;
+      $('btnRender').classList.remove('on');
+    }
+  }
+  $('btnRender').onclick = () => setView(!$('out').classList.contains('md'));
+
   function finish() {
     resultHtml = extractHtml(lastResult);
     if (resultHtml) {
@@ -266,10 +313,12 @@ async function loadPayload() {
       $('seg').classList.remove('hide');
       $('out').classList.add('hide'); $('pvWrap').classList.remove('hide'); setSeg(true);
       $('btnOpenHtml').classList.remove('hide'); $('btnDlHtml').classList.remove('hide');
+      $('btnRender').classList.add('hide');
     } else {
       $('seg').classList.add('hide'); $('pvWrap').classList.add('hide');
-      $('out').classList.remove('hide'); $('out').classList.add('md');
-      $('out').innerHTML = renderMarkdown(lastResult);
+      $('out').classList.remove('hide'); $('out').classList.add('term');
+      setView(false);   // 默认终端原样输出，与终端结果完全一致
+      $('btnRender').classList.remove('hide');
       $('btnOpenHtml').classList.add('hide'); $('btnDlHtml').classList.add('hide');
     }
     retr();

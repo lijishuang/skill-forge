@@ -88,6 +88,9 @@
     /* ===== 执行结果 ===== */
     '③ 执行结果': '③ Result',
     '执行结果': 'Result',
+    '与终端输出保持一致': 'identical to the terminal output',
+    '⌨ 终端': '⌨ Terminal',
+    '📝 渲染': '📝 Render',
     '待执行': 'Idle',
     '🖼 页面预览': '🖼 Preview',
     '⌨ 源码': '⌨ Source',
@@ -101,6 +104,28 @@
     '下载 .html': 'Download .html',
     '⬇ 下载 .html': '⬇ Download .html',
     '🧾 查看源码': '🧾 View source',
+
+    /* ===== 参数联动 ===== */
+    '联动': 'Link',
+    '设置参数联动（根据其他字段的值决定是否显示本字段）':
+      'Configure field linkage (show this field based on another field’s value)',
+    '保存联动': 'Save rule',
+    '清除联动': 'Clear rule',
+    '当字段': 'When field',
+    '取以下值时，才显示本字段：': 'has one of the values below, show this field:',
+    '暂无可作为联动条件的字段：需要至少一个 select / checkbox 类型字段':
+      'No field can drive a linkage yet: at least one select / checkbox field is required',
+    '该字段暂无选项': 'No options on this field yet',
+
+    /* ===== 内嵌浏览器 ===== */
+    '🌐 内嵌浏览器': '🌐 Embedded Browser',
+    '内嵌浏览器': 'Embedded browser',
+    '不涉及': 'N/A',
+    '已渲染结果页面': 'Result page rendered',
+    '执行结果若包含 HTML 页面，将在这里实时渲染；纯文本结果不涉及':
+      'If the result contains an HTML page it renders here live; plain-text results are N/A',
+    '该结果不包含 HTML 页面。': 'This result contains no HTML page.',
+    '若输出中包含 HTML，将自动在此渲染预览。': 'If the output contains HTML, a preview renders here automatically.',
 
     /* ===== 生成历史 ===== */
     '🗂 生成历史': '🗂 Run History',
@@ -176,6 +201,12 @@
     '技能不存在或已删除': 'This Skill no longer exists',
     '检测到 HTML 页面，已渲染预览，可单独打开':
       'HTML page detected — preview rendered, you can open it standalone',
+    '检测到 HTML 页面，已在内嵌浏览器中渲染':
+      'HTML page detected — rendered in the embedded browser',
+    '没有可见的输入字段，请检查参数联动设置':
+      'No visible input fields — check the field linkage settings',
+    '联动规则已保存': 'Linkage rule saved',
+    '已清除联动': 'Linkage cleared',
     '没有找到要展示的界面数据。': 'No UI data to display.',
     '没有找到页面内容。': 'Page content not found.',
     '请先填写模型配置（地址 / Key / 模型）': 'Fill in the model settings first (URL / Key / model)',
@@ -231,7 +262,8 @@
     [/^已完成（(.*)）$/, (m) => 'Done (' + m[1] + ')'],
     [/^正文 (\d+) 字符$/, (m) => m[1] + ' chars in body'],
     [/^占位符 (\d+) 个$/, (m) => m[1] + ' placeholder(s)'],
-    [/^(\d+) 个字段 · (.*)$/, (m) => m[1] + ' fields · ' + (DICT[m[2]] || EXACT_EXTRA[m[2]] || m[2])]
+    [/^(\d+) 个字段(?: · (\d+) 个联动)? · (.*)$/,
+      (m) => m[1] + ' fields' + (m[2] ? ' · ' + m[2] + ' linked' : '') + ' · ' + (DICT[m[3]] || EXACT_EXTRA[m[3]] || m[3])],
   ];
 
   /* 纯中文标点/短词的兜底（tool.js、doc.js 里的少量动态文案） */
