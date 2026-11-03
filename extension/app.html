@@ -39,7 +39,10 @@
   .card h2{font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px;margin-bottom:12px}
   .card h2 .tag{font-size:11px;font-weight:500;color:var(--text-3);margin-left:auto}
   .col{display:flex;flex-direction:column;gap:20px;min-width:0}
-  .col-browser{position:sticky;top:14px;align-self:start}
+  .col-browser{align-self:stretch}
+  /* 中栏结果卡撑满剩余空间，三栏底部对齐 */
+  .col-mid > .card:first-child{flex:1;display:flex;flex-direction:column}
+  .col-mid > .card:first-child .out{flex:1;max-height:none;min-height:340px}
   .drop{border:2px dashed var(--border-strong);border-radius:10px;padding:22px 16px;text-align:center;
     cursor:pointer;transition:.15s;color:var(--text-2)}
   .drop:hover,.drop.over{border-color:var(--accent);background:var(--accent-soft)}
@@ -166,7 +169,7 @@
   .mode-heuristic{background:var(--green-soft);color:var(--green)}
   .mode-ai{background:var(--accent-soft);color:var(--accent)}
   /* 右栏内嵌浏览器 */
-  .browser-card{display:flex;flex-direction:column;min-height:560px}
+  .browser-card{display:flex;flex-direction:column;min-height:560px;flex:1}
   .browser-head{display:flex;align-items:center;gap:8px;margin-bottom:4px}
   .browser-head h2{margin:0}
   .browser-tip{font-size:11.5px;color:var(--text-3);margin-bottom:10px}
