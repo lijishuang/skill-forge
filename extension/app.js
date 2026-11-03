@@ -781,7 +781,7 @@ async function run() {
       const st = box && box._folderState;
       const picks = st ? st.files.filter(x => st.included.has(x.path)) : [];
       if (picks.length) {
-        values[f.key] = I18N.tr('本地目录「' + (st.dirName || '') + '」，已选 ' + picks.length + ' 个文件：\n' + picks.map(x => '- ' + x.path).join('\n'));
+        values[f.key] = I18N.tr('本地待检文件清单（内容已附在系统提示「### 本地文件」小节，可直接引用）：\n' + picks.map(x => '- ' + x.path).join('\n'));
         visibleCount++;
       }
       continue;   // 目录允许为空，不强制
@@ -797,7 +797,11 @@ async function run() {
   const refText = SKILL.refs.filter(r => !r.skipped && r.content)
     .map(r => `\n\n### 参考文件：${r.name}\n${r.content.slice(0, 8000)}`).join('');
   const folderText = await folderCollectText(FIELDS, f => document.querySelector(`#formArea .field[data-fkey="${f.key}"]`));
-  const sys = `你是一个执行「Skill」的助手。\n# Skill 名称\n${SKILL.name}\n${SKILL.description ? '# 描述\n' + SKILL.description + '\n' : ''}# 完整指令\n${SKILL.body}${refText}${folderText}`;
+  // 告知模型：文件内容已附上，禁止以「缺少路径/无法访问」为由拒绝
+  const folderNote = folderText ? '\n\n# 本地文件说明\n用户已在浏览器端选择了本地待检文件，内容已全文附在上方「### 本地文件：<路径>」小节中（路径为文件名/相对路径形式，浏览器安全机制不提供绝对路径）。你没有访问用户文件系统的能力，请直接基于已附上的文件内容执行 Skill；不要以「缺少文件路径」「无法访问文件」「无法执行本地自查」为由拒绝或要求补充信息。' : '';
+  const hasFolderPick = FIELDS.some(f => f.type === 'folder' && !f._hidden && values[f.key]);
+  if (hasFolderPick && !folderText) toast(I18N.tr('注意：所选文件均无法读取为文本（可能全是二进制），未附加任何文件内容'));
+  const sys = `你是一个执行「Skill」的助手。\n# Skill 名称\n${SKILL.name}\n${SKILL.description ? '# 描述\n' + SKILL.description + '\n' : ''}# 完整指令\n${SKILL.body}${refText}${folderText}${folderNote}`;
   const user = '请根据上述 Skill 指令处理以下输入：\n' +
     Object.entries(values).map(([k, v]) => `【${k}】\n${v}`).join('\n\n') +
     '\n\n直接输出 Skill 要求的最终结果，不要解释执行过程。';

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Skill 工坊",
-  "version": "1.6.2",
+  "version": "1.6.3",
   "description": "上传/保存 SKILL.md，自动生成适配界面，填参数调用 LLM 执行。支持右键把网页选中内容送入 Skill。",
   "permissions": [
     "contextMenus",

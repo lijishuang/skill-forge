@@ -129,6 +129,8 @@
     '选择文件': 'Pick files',
     '手动选择': 'Picked manually',
     '目录为空': 'The folder is empty',
+    '注意：所选文件均无法读取为文本（可能全是二进制），未附加任何文件内容':
+      'Note: none of the selected files could be read as text (possibly all binary) — no file content was attached',
     '未选择': 'None selected',
     '全选': 'All',
     '点击打开文件': 'Click to open the file',
