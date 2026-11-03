@@ -432,6 +432,148 @@ function buildLinkEditor(f) {
   return ed;
 }
 
+/* ===== folder 字段：本地待检目录（选择目录、打开/勾选本地文件，随执行提交） ===== */
+const FOLDER_TEXT_EXT = ('md,txt,json,csv,tsv,log,js,ts,jsx,tsx,py,java,c,h,cpp,hpp,cs,go,rs,rb,php,sh,bat,ps1,html,htm,css,scss,less,xml,yml,yaml,ini,cfg,conf,toml,sql,swift,kt,scala,r,m,mm,vue,svelte,proto,graphql,gql,properties,env,plist').split(',');
+function folderIsText(name) {
+  const base = String(name).split('/').pop();
+  if (/^(dockerfile|makefile|gitignore|license|readme|gemfile|procfile)$/i.test(base)) return true;
+  const parts = base.split('.');
+  if (parts.length < 2) return false;
+  return FOLDER_TEXT_EXT.includes(parts.pop().toLowerCase());
+}
+function folderFmtSize(n) {
+  return n < 1024 ? n + 'B' : n < 1048576 ? (n / 1024).toFixed(1) + 'K' : (n / 1048576).toFixed(1) + 'M';
+}
+async function folderWalk(dir, out, depth, prefix) {
+  if (depth > 3 || out.length >= 200) return;
+  for await (const [name, h] of dir.entries()) {
+    if (out.length >= 200) break;
+    if (name.startsWith('.')) continue;
+    const p = (prefix ? prefix + '/' : '') + name;
+    if (h.kind === 'file') {
+      try { const file = await h.getFile(); out.push({ file, path: p, name, size: file.size }); } catch (e) {}
+    } else if (h.kind === 'directory') await folderWalk(h, out, depth + 1, p);
+  }
+}
+function folderPickFallback(onLoaded) {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.webkitdirectory = true; inp.multiple = true;
+  inp.onchange = () => {
+    const files = [...inp.files].map(f => ({ file: f, path: f.webkitRelativePath || f.name, name: f.name, size: f.size }));
+    const root = (files[0] && files[0].path.includes('/')) ? files[0].path.split('/')[0] : '';
+    onLoaded(files, root);
+  };
+  inp.click();
+}
+function folderPick(onLoaded) {
+  if (window.showDirectoryPicker) {
+    window.showDirectoryPicker({ mode: 'read' }).then(async dir => {
+      const files = [];
+      await folderWalk(dir, files, 0, '');
+      onLoaded(files, dir.name);
+    }).catch(e => { if (e && e.name !== 'AbortError') folderPickFallback(onLoaded); });
+  } else folderPickFallback(onLoaded);
+}
+function folderOpenFile(it, ctx) {
+  const show = text => {
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:24px';
+    const box = document.createElement('div');
+    box.style.cssText = 'background:var(--panel,#fff);border-radius:12px;max-width:760px;width:100%;max-height:80vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.25)';
+    const head = document.createElement('div');
+    head.style.cssText = 'padding:10px 16px;border-bottom:1px solid var(--border,#e5e7eb);display:flex;align-items:center;gap:10px;flex-shrink:0';
+    const tt = document.createElement('b'); tt.style.cssText = 'font-size:13px;flex:1;word-break:break-all'; tt.textContent = it.path;
+    const x = document.createElement('button'); x.type = 'button'; x.textContent = '✕';
+    x.style.cssText = 'border:none;background:none;font-size:15px;cursor:pointer;color:inherit';
+    x.onclick = () => ov.remove();
+    head.appendChild(tt); head.appendChild(x);
+    const pre = document.createElement('pre');
+    pre.style.cssText = 'margin:0;padding:14px 16px;overflow:auto;font:12px/1.6 ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;word-break:break-word;flex:1';
+    pre.textContent = text == null ? ctx.tr('（二进制文件或读取失败，无法预览）') : text;
+    box.appendChild(head); box.appendChild(pre); ov.appendChild(box);
+    ov.onclick = e => { if (e.target === ov) ov.remove(); };
+    document.body.appendChild(ov);
+  };
+  if (!folderIsText(it.name)) { show(null); return; }
+  it.file.text().then(s => {
+    show(s.includes('\u0000') ? null : (s.length > 20000 ? s.slice(0, 20000) + '\n…' : s));
+  }).catch(() => show(null));
+}
+function buildFolderUI(f, d, ctx) {
+  const st = { files: [], included: new Set(), dirName: '' };
+  d._folderState = st;
+  const pickRow = document.createElement('div');
+  pickRow.style.cssText = 'display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px';
+  const btn = document.createElement('button');
+  btn.type = 'button'; btn.textContent = '📁 ' + ctx.tr('选择本地目录'); btn.style.fontWeight = '600';
+  const dirName = document.createElement('span');
+  dirName.style.cssText = 'font-size:12px;color:var(--text-3)';
+  dirName.textContent = ctx.tr('未选择');
+  pickRow.appendChild(btn); pickRow.appendChild(dirName);
+  const listWrap = document.createElement('div');
+  listWrap.classList.add(ctx.hideCls);
+  listWrap.innerHTML = '<div class="fbar"><label class="fall"><input type="checkbox" class="fall-ck"> <span>' + ctx.tr('全选') + '</span></label><span class="fcnt"></span></div><div class="fitems"></div>';
+  d.appendChild(pickRow); d.appendChild(listWrap);
+  const itemsEl = listWrap.querySelector('.fitems');
+  const fall = listWrap.querySelector('.fall-ck');
+  const updCnt = () => {
+    listWrap.querySelector('.fcnt').textContent = ctx.tr(st.included.size + ' / ' + st.files.length + ' 已选');
+    fall.checked = st.files.length > 0 && st.included.size === st.files.length;
+  };
+  const renderItems = () => {
+    itemsEl.innerHTML = '';
+    st.files.forEach(it => {
+      const row = document.createElement('div'); row.className = 'fitem';
+      const ck = document.createElement('input'); ck.type = 'checkbox';
+      ck.checked = st.included.has(it.path);
+      ck.onchange = () => { if (ck.checked) st.included.add(it.path); else st.included.delete(it.path); updCnt(); };
+      const nm = document.createElement('span'); nm.className = 'fname'; nm.textContent = it.path;
+      nm.title = ctx.tr('点击打开文件');
+      nm.onclick = () => folderOpenFile(it, ctx);
+      const sz = document.createElement('span'); sz.className = 'fsize'; sz.textContent = folderFmtSize(it.size);
+      if (!folderIsText(it.name)) { sz.textContent += ' ⛔'; sz.title = ctx.tr('二进制文件，不参与执行'); }
+      row.appendChild(ck); row.appendChild(nm); row.appendChild(sz);
+      itemsEl.appendChild(row);
+    });
+    updCnt();
+  };
+  st.rerender = renderItems;   // 供测试/外部刷新
+  fall.onchange = () => {
+    st.included = new Set(fall.checked ? st.files.map(x => x.path) : []);
+    renderItems();
+  };
+  btn.onclick = () => folderPick((files, dirN) => {
+    st.files = files; st.dirName = dirN || '';
+    st.included = new Set(files.filter(x => folderIsText(x.name)).slice(0, 30).map(x => x.path));
+    dirName.textContent = (st.dirName || ctx.tr('已选目录')) + ' · ' + ctx.tr(files.length + ' 个文件');
+    listWrap.classList.remove(ctx.hideCls);
+    renderItems();
+    ctx.toast(ctx.tr('已加载待检目录（' + files.length + ' 个文件），勾选后随执行一并提交'));
+  });
+}
+async function folderCollectText(fields, getBox) {
+  let text = '', used = 0;
+  for (const f of fields) {
+    if (f.type !== 'folder' || f._hidden) continue;
+    const box = getBox(f);
+    const st = box && box._folderState;
+    if (!st) continue;
+    for (const it of st.files) {
+      if (used >= 60000) break;
+      if (!st.included.has(it.path) || !folderIsText(it.name)) continue;
+      try {
+        const s = await it.file.text();
+        if (s.includes('\u0000')) continue;
+        const body = s.slice(0, 12000);
+        text += '\n\n### 本地文件：' + it.path + '\n' + body;
+        used += body.length;
+      } catch (e) {}
+    }
+  }
+  return text;
+}
+window.__folderTest = { folderIsText, folderFmtSize, buildFolderUI, folderPick, folderOpenFile, folderCollectText };
+
 /* ===== 界面生成 ===== */
 function fieldHeader(f, withReq) {
   return `<div class="fl">${escapeHtml(f.label || f.key)}${withReq ? ' <span class="req">' + I18N.tr('必填') + '</span>' : ''}
@@ -479,14 +621,19 @@ function renderForm() {
       ctrl.dataset.key = f.key;
       d.innerHTML = fieldHeader(f, false);
       d.appendChild(wrap);
+    } else if (f.type === 'folder') {
+      d.innerHTML = fieldHeader(f, false);
+      buildFolderUI(f, d, { tr: s => I18N.tr(s), toast, hideCls: 'hidden' });
     } else {
       ctrl = document.createElement('input');
       ctrl.type = { number: 'number', date: 'date', email: 'email', url: 'url' }[f.type] || 'text';
       d.innerHTML = fieldHeader(f, false);
       d.appendChild(ctrl);
     }
-    if (f.placeholder) ctrl.placeholder = f.placeholder;
-    ctrl.dataset.key = f.key;
+    if (ctrl) {
+      if (f.placeholder) ctrl.placeholder = f.placeholder;
+      ctrl.dataset.key = f.key;
+    }
     bindLinkBtn(d, f);
     area.appendChild(d);
   });
@@ -528,7 +675,7 @@ $('btnAutoUI').onclick = () => {
 $('btnManualUI').onclick = () => {
   const key = prompt('字段名（英文 key）：'); if (!key) return;
   const label = prompt('显示名称：', guessLabel(key)) || key;
-  const type = prompt('类型：text / textarea / number / select', 'text'); if (!type) return;
+  const type = prompt('类型：text / textarea / number / select / checkbox / date / folder', 'text'); if (!type) return;
   let options = null; if (type === 'select') options = (prompt('选项，逗号分隔：', 'A,B,C') || 'A,B,C').split(',').map(s => s.trim());
   mode = FIELDS.length ? mode : 'manual';
   FIELDS.push({ key, label, type, hint: '', options }); renderForm(); toast('已添加字段 ' + key);
@@ -541,8 +688,8 @@ $('btnAIGen').onclick = async () => {
   const refsText = SKILL.refs.filter(r => !r.skipped && r.content)
     .map(r => `\n--- 附件 ${r.name} ---\n${r.content.slice(0, 6000)}`).join('');
   const sys = '你是 UI 设计师。用户会给一个 AI Skill 的完整定义，请为它设计一个填写表单界面。' +
-    '只输出 JSON 数组，不要任何其他文字。每个元素：{"key":"英文变量名","label":"中文显示名","type":"text|textarea|number|select|date|checkbox","hint":"一句中文填写提示","options":["select 时的选项"]}。' +
-    '字段 2-6 个，覆盖该 Skill 运行所需的全部输入；按语义选择类型：长文本用 textarea，有限选项用 select，日期用 date，是/否开关用 checkbox，数量用 number。' +
+    '只输出 JSON 数组，不要任何其他文字。每个元素：{"key":"英文变量名","label":"中文显示名","type":"text|textarea|number|select|date|checkbox|folder","hint":"一句中文填写提示","options":["select 时的选项"]}。' +
+    '字段 2-6 个，覆盖该 Skill 运行所需的全部输入；按语义选择类型：长文本用 textarea，有限选项用 select，日期用 date，是/否开关用 checkbox，数量用 number，需要用户提供本地目录/文件集（待检查、待分析的本地资料）时用 folder。' +
     '参数联动：仅当某个字段确实依赖另一字段的取值（选了某些值才需要填写、否则无意义）时，为它加可选字段 "showIf":{"key":"父字段key","values":["触发显示的选项值"]}；values 取父字段 select 的选项，或 checkbox 的"是"/"否"。大多数字段不需要 showIf，不要滥用。';
   const user = `Skill 名称：${SKILL.name}\n描述：${SKILL.description}\n\n正文：\n${SKILL.body.slice(0, 8000)}${refsText}`;
   setRun(true, 'AI 正在分析 Skill 并设计界面…');
@@ -592,6 +739,16 @@ async function run() {
   let visibleCount = 0;
   for (const f of FIELDS) {
     if (f._hidden) continue;   // 联动隐藏的字段不参与执行
+    if (f.type === 'folder') {
+      const box = document.querySelector(`#formArea .field[data-fkey="${f.key}"]`);
+      const st = box && box._folderState;
+      const picks = st ? st.files.filter(x => st.included.has(x.path)) : [];
+      if (picks.length) {
+        values[f.key] = I18N.tr('本地目录「' + (st.dirName || '') + '」，已选 ' + picks.length + ' 个文件：\n' + picks.map(x => '- ' + x.path).join('\n'));
+        visibleCount++;
+      }
+      continue;   // 目录允许为空，不强制
+    }
     const el = document.querySelector(`[data-key="${f.key}"]`);
     if (f.type === 'checkbox') { values[f.key] = el && el.checked ? '是' : '否'; visibleCount++; continue; }
     const v = (el ? el.value.trim() : '');
@@ -602,7 +759,8 @@ async function run() {
   window._lastValues = values;
   const refText = SKILL.refs.filter(r => !r.skipped && r.content)
     .map(r => `\n\n### 参考文件：${r.name}\n${r.content.slice(0, 8000)}`).join('');
-  const sys = `你是一个执行「Skill」的助手。\n# Skill 名称\n${SKILL.name}\n${SKILL.description ? '# 描述\n' + SKILL.description + '\n' : ''}# 完整指令\n${SKILL.body}${refText}`;
+  const folderText = await folderCollectText(FIELDS, f => document.querySelector(`#formArea .field[data-fkey="${f.key}"]`));
+  const sys = `你是一个执行「Skill」的助手。\n# Skill 名称\n${SKILL.name}\n${SKILL.description ? '# 描述\n' + SKILL.description + '\n' : ''}# 完整指令\n${SKILL.body}${refText}${folderText}`;
   const user = '请根据上述 Skill 指令处理以下输入：\n' +
     Object.entries(values).map(([k, v]) => `【${k}】\n${v}`).join('\n\n') +
     '\n\n直接输出 Skill 要求的最终结果，不要解释执行过程。';

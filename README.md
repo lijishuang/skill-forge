@@ -39,6 +39,7 @@ Skill Forge is a **Manifest V3 browser extension** (works on Chrome / Edge / any
 | 🔗 | **Parameter Linkage (NEW v1.5)** | Fields can declare `showIf` conditions — a field only appears when an upstream select/checkbox matches, in both the workbench and exported pages |
 | ⌨️ | **Terminal-faithful Output (NEW v1.5)** | Results render in a terminal pane byte-for-byte identical to the raw stream — no trimming, no rewriting; Markdown/HTML rendering is an explicit toggle |
 | 🖥️ | **3-Column Workbench (NEW v1.5)** | Left: inputs & model config · Middle: execution result, history & pages · Right: embedded browser that live-renders HTML results (or shows an explicit "N/A" when there is none) |
+| 📁 | **Local Folder Inspection (NEW v1.6)** | A `folder` field lets users pick a local directory ("待检目录"), browse its files, click any file to open/preview it, check the ones to submit — selected text files' contents are attached to the run automatically. Uses the File System Access API with a `webkitdirectory` fallback; binary files are detected and excluded |
 
 ## 🚀 Quick Start
 
