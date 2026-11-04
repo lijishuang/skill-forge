@@ -865,6 +865,11 @@ async function hostFindHtml(root, sinceTs) {
 
   $('btnRun').onclick = run;
   $('btnCopy').onclick = () => { navigator.clipboard.writeText(lastResult); toast('已复制'); };
+  $('btnExpand').onclick = () => {
+    const ex = $('out').classList.toggle('expanded');
+    $('btnExpand').textContent = I18N.tr(ex ? '⤡ 还原' : '⤢ 放大');
+    if (ex) $('out').scrollIntoView({ block: 'nearest' });
+  };
   $('btnDl').onclick = () => download(lastResult, 'text/markdown', D.name + '-结果.md');
   $('btnOpenHtml').onclick = async () => {
     if (!browserHtml) return;

@@ -42,7 +42,9 @@
   .col-browser{align-self:stretch}
   /* 中栏结果卡撑满剩余空间，三栏底部对齐 */
   .col-mid > .card:first-child{flex:1;display:flex;flex-direction:column}
-  .col-mid > .card:first-child .out{flex:1;max-height:none;min-height:340px}
+  .col-mid > .card:first-child .out{flex:1;max-height:calc(100vh - 250px);min-height:340px}
+  /* 结果区放大：突破视口封顶，完整展开内容 */
+  .out.expanded,.col-mid > .card:first-child .out.expanded,.col:nth-child(2) > .card:first-child .out.expanded{max-height:none;flex:none}
   .drop{border:2px dashed var(--border-strong);border-radius:10px;padding:22px 16px;text-align:center;
     cursor:pointer;transition:.15s;color:var(--text-2)}
   .drop:hover,.drop.over{border-color:var(--accent);background:var(--accent-soft)}
@@ -316,6 +318,7 @@
       <div class="btnrow" style="margin-top:12px">
         <button id="btnCopy" disabled>复制结果</button>
         <button id="btnDownload" disabled>下载 .md</button>
+        <button id="btnExpand" title="放大或还原结果区高度">⤢ 放大</button>
       </div>
     </div>
 

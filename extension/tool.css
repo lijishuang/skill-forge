@@ -24,7 +24,9 @@ main{display:grid;grid-template-columns:380px minmax(0,1fr) 400px;gap:20px;paddi
 .browser-card{display:flex;flex-direction:column;min-height:520px;flex:1}
 /* 中栏结果卡撑满剩余空间，三栏底部对齐 */
 .col:nth-child(2) > .card:first-child{flex:1;display:flex;flex-direction:column}
-.col:nth-child(2) > .card:first-child .out{flex:1;max-height:none;min-height:340px}
+.col:nth-child(2) > .card:first-child .out{flex:1;max-height:calc(100vh - 250px);min-height:340px}
+/* 结果区放大：突破视口封顶，完整展开内容 */
+.out.expanded,.col-mid > .card:first-child .out.expanded,.col:nth-child(2) > .card:first-child .out.expanded{max-height:none;flex:none}
 .browser-head{display:flex;align-items:center;gap:8px}
 .browser-head h2{margin:0;flex:1}
 .browser-head .tag{margin-left:0}

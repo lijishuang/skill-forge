@@ -1123,6 +1123,11 @@ async function chat(messages, stream, c) {
 }
 
 $('btnCopy').onclick = () => { navigator.clipboard.writeText($('output').textContent); toast('已复制'); };
+$('btnExpand').onclick = () => {
+  const ex = $('output').classList.toggle('expanded');
+  $('btnExpand').textContent = I18N.tr(ex ? '⤡ 还原' : '⤢ 放大');
+  if (ex) $('output').scrollIntoView({ block: 'nearest' });
+};
 $('btnDownload').onclick = () => {
   const blob = new Blob([$('output').textContent], { type: 'text/markdown' });
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
