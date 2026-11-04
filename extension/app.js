@@ -708,11 +708,6 @@ async function hostAgentRun(o) {
     if (act.action === 'exec') {
       const cmd = String(act.command || '').trim();
       if (!cmd) { msgs.push({ role: 'assistant', content: text }, { role: 'user', content: 'command 为空，请重新给出。' }); continue; }
-      if (!o.auto && !confirm('本地执行器将运行命令：\n\n' + cmd + '\n\n允许执行？')) {
-        msgs.push({ role: 'assistant', content: text },
-          { role: 'user', content: '用户拒绝了该命令。请改用其他方式，或直接给出最终结果 {"action":"final","answer":"…"}。' });
-        continue;
-      }
       o.print('$ ' + cmd);
       let out, code;
       try { const r = await hostExec(o.dir, cmd); out = r.output; code = r.code; }
@@ -959,7 +954,6 @@ async function run() {
         + '不要输出任何多余文字。需要多条命令就分多轮逐条执行；全部完成后再给 final。';
       const user = '请执行此 Skill。输入参数：\n'
         + Object.entries(values).map(([k, v]) => `【${k}】\n${v}`).join('\n\n');
-      const auto = $('hostAuto') && $('hostAuto').checked;
       const chatOnce = async msgs => {
         const res = await fetch(c.base.replace(/\/+$/, '') + '/chat/completions', {
           method: 'POST',
@@ -970,7 +964,7 @@ async function run() {
         return (await res.json()).choices[0].message.content.trim();
       };
       const answer = await hostAgentRun({
-        sys, user, dir: up.dir, auto,
+        sys, user, dir: up.dir,
         status: s => { $('runStatus').textContent = I18N.tr(s); },
         print,
         chat: chatOnce

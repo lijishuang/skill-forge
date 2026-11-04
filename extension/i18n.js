@@ -76,7 +76,6 @@
     '本地执行器：未连接（本机运行 python3 skill-forge-host.py 后点「检测」）':
       'Local executor: offline — run `python3 skill-forge-host.py` locally, then click Check',
     '检测': 'Check',
-    '自动执行命令': 'auto-run commands',
     '本地待检文件清单（内容已附在系统提示「### 本地文件」小节，可直接引用）：':
       'Local files to inspect (contents attached in system prompt section “### Local files”):',
     '本地待检目录（本机绝对路径，可在命令中直接使用）：':
