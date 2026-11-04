@@ -84,6 +84,11 @@ button.on{border-color:var(--accent);color:var(--accent);font-weight:600;backgro
 .md p{margin:6px 0}
 .md hr{border:none;border-top:1px solid var(--border);margin:12px 0}
 .md a{color:var(--accent)}
+/* 来源文件视图（右栏下拉框选中磁盘文件时中栏联动展示） */
+.src-head{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin:2px 0 6px;font-size:13.5px}
+.src-head b{font-size:14px}
+.src-meta{font-size:11px;color:var(--text-3);word-break:break-all;font-family:var(--mono)}
+.src-tip{font-size:12px;color:var(--text-3);margin:0 0 8px}
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1f2328;color:#fff;
   padding:10px 20px;border-radius:10px;font-size:13px;opacity:0;transition:.3s;pointer-events:none}
 .toast.show{opacity:.95}

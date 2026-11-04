@@ -979,6 +979,7 @@ async function run() {
     $('output').textContent = ''; $('output').setAttribute('data-noi18n', '1');
     $('output').classList.remove('hidden');
     hostTranscript = '';
+    $('browserSrc').innerHTML = ''; $('browserSrc').classList.add('hidden');   // 清掉上次执行残留的来源选项
     try {
       const runStartTs = Math.floor(Date.now() / 1000) - 2;   // 用于识别执行期间新生成的文件
       setRun(true, '正在把技能包安装到本地执行器…');
@@ -1171,8 +1172,8 @@ function setResultView(v) {
   }
   $('output').scrollTop = 0;
 }
-$('segTerm').onclick = () => setResultView('term');
-$('segMd').onclick = () => setResultView('md');
+$('segTerm').onclick = () => { browserBackToInline(); setResultView('term'); };
+$('segMd').onclick = () => { browserBackToInline(); setResultView('md'); };
 
 function updateResultActions() {
   resultHtml = extractHtml(lastResult || '');
@@ -1194,7 +1195,7 @@ function updateResultActions() {
 }
 
 /* ===== 内嵌浏览器：加载执行器上真实生成的 HTML 报告文件 ===== */
-async function browserLoadLocal(path) {
+async function browserLoadLocal(path, syncOut) {
   try {
     const r = await hostReadFile(path);
     browserHtml = r.text;
@@ -1204,6 +1205,7 @@ async function browserLoadLocal(path) {
     $('browserTag').textContent = '📄 ' + path.split('/').pop();
     ['brOpen', 'brDl', 'brSave'].forEach(id => $(id).classList.remove('hidden'));
     $('browserSrc').value = path;
+    if (syncOut) showSrcFileView(r.path || path, r.text, r.size);   // 中栏联动展示该文件源码
   } catch (e) { toast('读取执行器上的 HTML 失败：' + e.message); }
 }
 /* 执行结束后调用：发现执行期间在技能目录里生成的 .html 文件并挂入来源选择 */
@@ -1228,6 +1230,32 @@ async function loadGeneratedHtml(dir, sinceTs) {
     if (!resultHtml) await browserLoadLocal(files[0].path);   // 结果无 HTML 时自动加载最新生成的
   } catch (e) { /* 执行器离线等场景静默跳过 */ }
 }
+/* ===== 来源文件视图：右栏下拉框选中磁盘文件时，中栏联动展示该文件源码 ===== */
+function showSrcFileView(path, text, size) {
+  const kb = size > 1048576 ? (size / 1048576).toFixed(1) + ' MB'
+    : size ? Math.max(1, Math.round(size / 1024)) + ' KB' : '';
+  $('output').classList.add('md'); $('output').classList.remove('term');
+  $('output').setAttribute('data-noi18n', '1');
+  $('output').innerHTML =
+    '<div class="src-head">📄 <b>' + escapeHtml(path.split('/').pop()) + '</b>' +
+    '<span class="src-meta">' + escapeHtml(path) + (kb ? ' · ' + kb : '') + '</span></div>' +
+    '<div class="src-tip">' + I18N.tr('该文件已在右栏「内嵌浏览器」渲染预览，下方为其源码；切回「最终结果中的页面」可查看执行结果') + '</div>' +
+    '<pre><code>' + escapeHtml(text) + '</code></pre>';
+  $('output').scrollTop = 0;
+}
+/* 点「终端/渲染」切回执行结果时，右栏同步恢复为最终结果页面 */
+function browserBackToInline() {
+  const sel = $('browserSrc');
+  if (!sel.classList.contains('hidden') && sel.value !== '__inline__' &&
+      sel.querySelector('option[value="__inline__"]')) {
+    sel.value = '__inline__';
+    browserHtml = resultHtml;
+    if (resultHtml) {
+      $('browserFrame').srcdoc = resultHtml;
+      $('browserTag').textContent = I18N.tr('已渲染结果页面');
+    }
+  }
+}
 $('browserSrc').onchange = () => {
   const v = $('browserSrc').value;
   if (v === '__inline__') {
@@ -1239,7 +1267,8 @@ $('browserSrc').onchange = () => {
       $('browserTag').textContent = I18N.tr('已渲染结果页面');
       ['brOpen', 'brDl', 'brSave'].forEach(id => $(id).classList.remove('hidden'));
     }
-  } else if (v) browserLoadLocal(v);
+    setResultView(resultView);   // 中栏恢复执行结果展示
+  } else if (v) browserLoadLocal(v, true);
 };
 /* 打开一个生成出来的 HTML 页面：
    扩展内走 doc.html + 沙箱页（blob 会继承扩展 CSP，页面里的脚本会被拦）；无插件环境直接用 blob */

@@ -517,9 +517,10 @@ async function hostFindHtml(root, sinceTs) {
     const { toolCfg = {} } = await chrome.storage.local.get(['toolCfg']);
     saved = Object.assign({}, saved, toolCfg);
   }
-  $('cBase').value = saved.base || D.cfg.base || '';
-  $('cKey').value = saved.key || D.cfg.key || '';
-  $('cModel').value = saved.model || D.cfg.model || '';
+  const DC = D.cfg || {};
+  $('cBase').value = saved.base || DC.base || '';
+  $('cKey').value = saved.key || DC.key || '';
+  $('cModel').value = saved.model || DC.model || '';
   const persist = () => {
     try { localStorage.setItem(CK, JSON.stringify(saved)); } catch (e) {}
     if (isExt) chrome.storage.local.set({ toolCfg: saved });
@@ -561,7 +562,7 @@ async function hostFindHtml(root, sinceTs) {
   setBrowser(false);
 
   /* ===== 内嵌浏览器：加载执行器上真实生成的 HTML 报告文件 ===== */
-  async function browserLoadLocal(path) {
+  async function browserLoadLocal(path, syncOut) {
     try {
       const r = await hostReadFile(path);
       browserHtml = r.text;
@@ -569,6 +570,7 @@ async function hostFindHtml(root, sinceTs) {
       setBrowser(true);
       $('bTag').textContent = '📄 ' + path.split('/').pop();
       $('bSrc').value = path;
+      if (syncOut) showSrcFileView(r.path || path, r.text, r.size);   // 中栏联动展示该文件源码
     } catch (e) { toast('读取执行器上的 HTML 失败：' + e.message); }
   }
   async function loadGeneratedHtml(dir, sinceTs) {
@@ -601,8 +603,37 @@ async function hostFindHtml(root, sinceTs) {
         setBrowser(true);
         $('bTag').textContent = I18N.tr('已渲染 HTML');
       }
-    } else if (v) browserLoadLocal(v);
+      setView(viewMd);   // 中栏恢复执行结果展示
+    } else if (v) browserLoadLocal(v, true);
   };
+
+  /* ===== 来源文件视图：右栏下拉框选中磁盘文件时，中栏联动展示该文件源码 ===== */
+  function showSrcFileView(path, text, size) {
+    const kb = size > 1048576 ? (size / 1048576).toFixed(1) + ' MB'
+      : size ? Math.max(1, Math.round(size / 1024)) + ' KB' : '';
+    $('out').classList.add('md'); $('out').classList.remove('term');
+    $('out').setAttribute('data-noi18n', '1');
+    $('out').innerHTML =
+      '<div class="src-head">📄 <b>' + escapeHtml(path.split('/').pop()) + '</b>' +
+      '<span class="src-meta">' + escapeHtml(path) + (kb ? ' · ' + kb : '') + '</span></div>' +
+      '<div class="src-tip">' + I18N.tr('该文件已在右栏「内嵌浏览器」渲染预览，下方为其源码；切回「最终结果中的页面」可查看执行结果') + '</div>' +
+      '<pre><code>' + escapeHtml(text) + '</code></pre>';
+    $('out').scrollTop = 0;
+  }
+  /* 点「渲染/终端」切回执行结果时，右栏同步恢复为最终结果页面 */
+  function browserBackToInline() {
+    const sel = $('bSrc');
+    if (!sel.classList.contains('hide') && sel.value !== '__inline__' &&
+        sel.querySelector('option[value="__inline__"]')) {
+      sel.value = '__inline__';
+      browserHtml = resultHtml;
+      if (resultHtml) {
+        $('pv').srcdoc = resultHtml;
+        setBrowser(true);
+        $('bTag').textContent = I18N.tr('已渲染 HTML');
+      }
+    }
+  }
 
   function download(content, type, name) {
     const a = document.createElement('a');
@@ -663,6 +694,7 @@ async function hostFindHtml(root, sinceTs) {
       $('out').textContent = ''; $('out').classList.remove('hide');
       $('btnRender').classList.add('hide');
       hostTranscript = '';
+      $('bSrc').innerHTML = ''; $('bSrc').classList.add('hide');   // 清掉上次执行残留的来源选项
       const print = line => {
         hostTranscript += (hostTranscript ? '\n' : '') + line;
         $('out').textContent += ($('out').textContent ? '\n' : '') + line;
@@ -789,7 +821,9 @@ async function hostFindHtml(root, sinceTs) {
   }
 
   /* 结果视图：默认修饰渲染（Markdown），可切回终端原样输出 */
+  let viewMd = true;   // 记录当前视图，便于从「来源文件视图」恢复
   function setView(md) {
+    viewMd = md;
     $('out').setAttribute('data-noi18n', '1');
     if (md) {
       $('out').classList.add('md'); $('out').classList.remove('term');
@@ -803,7 +837,7 @@ async function hostFindHtml(root, sinceTs) {
       $('btnRender').classList.remove('on');
     }
   }
-  $('btnRender').onclick = () => setView(!$('out').classList.contains('md'));
+  $('btnRender').onclick = () => { browserBackToInline(); setView(!$('out').classList.contains('md')); };
 
   function finish() {
     resultHtml = extractHtml(lastResult);
