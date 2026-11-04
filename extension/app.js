@@ -735,7 +735,17 @@ async function hostAgentRun(o) {
     o.status('模型思考中…（第 ' + round + ' 轮）');
     const text = await o.chat(msgs);
     const act = hostParseAction(text);
-    if (!act) throw new Error('模型未返回有效的 JSON 指令（需要 {"action":"exec"} 或 {"action":"final"}）');
+    if (act) act.action = String(act.action || '').toLowerCase();
+    if (!act) {
+      const snippet = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 200) || '(空回复)';
+      if (round < 15) {
+        o.print('⚠️ 第 ' + round + ' 轮回复不是有效 JSON 指令，已要求模型重试。回复片段：' + snippet);
+        msgs.push({ role: 'assistant', content: text },
+                  { role: 'user', content: '你的回复必须是单个 JSON 对象：{"action":"exec","command":"要执行的命令"} 或 {"action":"final","answer":"最终结果"}，不要包含任何其他文字或解释。请重新回复。' });
+        continue;
+      }
+      throw new Error('模型连续未返回有效的 JSON 指令（需要 {"action":"exec"} 或 {"action":"final"}）。最后回复片段：' + snippet);
+    }
     if (act.action === 'final') return String(act.answer == null ? '' : act.answer);
     if (act.action === 'exec') {
       const cmd = String(act.command || '').trim();
@@ -1030,8 +1040,20 @@ async function run() {
           headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + c.key },
           body: JSON.stringify({ model: c.model, messages: msgs, stream: false, temperature: 0.3 })
         });
-        if (!res.ok) { let d = ''; try { d = (await res.json()).error?.message || ''; } catch (e) {} throw new Error(`HTTP ${res.status} ${d}`); }
-        return (await res.json()).choices[0].message.content.trim();
+        if (!res.ok) {
+          let d = ''; try { const je = await res.json(); d = (je.error && (je.error.message || JSON.stringify(je.error))) || ''; } catch (e) {}
+          throw new Error(`HTTP ${res.status} ${d}`);
+        }
+        const j = await res.json();
+        if (j.error) throw new Error('接口返回错误：' + (j.error.message || JSON.stringify(j.error)));
+        const ch = (j.choices && j.choices[0]) || {};
+        const msg = ch.message || {};
+        let content = msg.content;
+        if (Array.isArray(content)) content = content.map(p => (p && typeof p === 'object') ? (p.text || '') : String(p)).join('');
+        if ((content == null || content === '') && msg.reasoning_content) content = msg.reasoning_content;
+        if (content == null && ch.text != null) content = ch.text;
+        if (typeof content !== 'string') content = JSON.stringify(Object.keys(msg || {}).length ? msg : j).slice(0, 2000);
+        return content.trim();
       };
       const answer = await hostAgentRun({
         sys, user, dir: up.dir,
@@ -1100,7 +1122,17 @@ async function chat(messages, stream, c) {
     let d = ''; try { d = (await res.json()).error?.message || ''; } catch (e) {}
     throw new Error(`HTTP ${res.status} ${d}`);
   }
-  if (!stream) { const j = await res.json(); return j.choices[0].message.content.trim(); }
+  if (!stream) {
+    const j = await res.json();
+    if (j.error) throw new Error('接口返回错误：' + (j.error.message || JSON.stringify(j.error)));
+    const ch = (j.choices && j.choices[0]) || {}; const msg = ch.message || {};
+    let content = msg.content;
+    if (Array.isArray(content)) content = content.map(p => (p && typeof p === 'object') ? (p.text || '') : String(p)).join('');
+    if ((content == null || content === '') && msg.reasoning_content) content = msg.reasoning_content;
+    if (content == null && ch.text != null) content = ch.text;
+    if (typeof content !== 'string') content = JSON.stringify(Object.keys(msg || {}).length ? msg : j).slice(0, 2000);
+    return content.trim();
+  }
   const reader = res.body.getReader(); const dec = new TextDecoder(); let buf = '', out = '', used = null;
   while (true) {
     const { done, value } = await reader.read(); if (done) break;
