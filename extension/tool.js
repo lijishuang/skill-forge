@@ -333,12 +333,14 @@ try { __host.base = localStorage.getItem('sf_host_base') || HOST_DEFAULT_BASE; }
 const hostBase = () => (__host.base || HOST_DEFAULT_BASE).replace(/\/+$/, '');
 async function hostPing(force) {
   if (!force && __host.ok && Date.now() - __host.checkedAt < 30000) return true;
+  const was = __host.ok;
   try {
     const r = await fetch(hostBase() + '/ping', { signal: AbortSignal.timeout(2500) });
     __host.info = await r.json();
     __host.ok = !!(__host.info && __host.info.ok);
   } catch (e) { __host.ok = false; __host.info = null; }
   __host.checkedAt = Date.now();
+  if (!was && __host.ok) { try { toast(I18N.tr('本地执行器已自动连接')); } catch (e) {} }
   if (typeof window !== 'undefined' && typeof window.__hostUIRefresh === 'function') window.__hostUIRefresh();
   return __host.ok;
 }
@@ -533,10 +535,10 @@ async function hostFindHtml(root, sinceTs) {
   function hostUIRefresh() {
     const d = $('hostDot'), l = $('hostLabel');
     if (!d || !l) return;
-    d.className = 'host-dot' + (__host.ok ? ' on' : '');
-    l.textContent = __host.ok
-      ? I18N.tr('本地执行器：已连接 v') + ((__host.info && __host.info.version) || '')
-      : I18N.tr('本地执行器：未连接（本机运行 python3 skill-forge-host.py 后点「检测」）');
+  d.className = 'host-dot' + (__host.ok ? ' on' : '');
+      l.textContent = __host.ok
+        ? I18N.tr('本地执行器：已连接 v') + ((__host.info && __host.info.version) || '')
+        : I18N.tr('本地执行器：未连接（运行「安装执行器自启.command」可开机自动启动，正在自动重连…）');
   }
   window.__hostUIRefresh = hostUIRefresh;
   $('hostCheck').onclick = () => {
@@ -545,6 +547,10 @@ async function hostFindHtml(root, sinceTs) {
     hostPing(true);
   };
   setTimeout(() => hostPing(), 0);
+  /* 执行器未上线时每 10 秒自动重连，上线即自动变绿，无需手动点「检测」
+     （测试页可用 window.__HOST_RETRY_MS 覆盖间隔；设为 0 关闭） */
+  setInterval(() => { if (!__host.ok) hostPing(); },
+    (typeof window !== 'undefined' && window.__HOST_RETRY_MS) || 10000);
 
   $('btnClear').onclick = () => {
     document.querySelectorAll('#form [data-key]').forEach(el => {
@@ -650,7 +656,7 @@ async function hostFindHtml(root, sinceTs) {
     const skillHasScripts = hostHasScripts(D.refs);
     const hostOK = await hostPing();
     if (skillHasScripts && !hostOK)
-      toast(I18N.tr('检测到 Skill 含脚本，但本地执行器未连接，本次将以纯模型模式执行（在本机运行 python3 skill-forge-host.py 并点「检测」可真执行）'));
+      toast(I18N.tr('检测到 Skill 含脚本，但本地执行器未连接，本次将以纯模型模式执行（双击「安装执行器自启.command」后自动连接即可真执行）'));
     const hostMode = hostOK && skillHasScripts;
     const values = {};
     let visibleCount = 0;

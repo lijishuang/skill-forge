@@ -73,8 +73,9 @@
     /* ===== 本地执行器 ===== */
     '本地执行器：未检测': 'Local executor: not checked',
     '本地执行器：检测中…': 'Local executor: checking…',
-    '本地执行器：未连接（本机运行 python3 skill-forge-host.py 后点「检测」）':
-      'Local executor: offline — run `python3 skill-forge-host.py` locally, then click Check',
+    '本地执行器：未连接（运行「安装执行器自启.command」可开机自动启动，正在自动重连…）':
+      'Local executor: offline — run “安装执行器自启.command” once for auto-start at login. Reconnecting automatically…',
+    '本地执行器已自动连接': 'Local executor connected automatically',
     '检测': 'Check',
     '本地待检文件清单（内容已附在系统提示「### 本地文件」小节，可直接引用）：':
       'Local files to inspect (contents attached in system prompt section “### Local files”):',
@@ -82,8 +83,8 @@
       'Local directory (absolute path on this machine, usable directly in commands):',
     '或粘贴本地绝对路径（连接本地执行器后可直接执行，如 /Users/you/Downloads/待检目录）':
       '…or paste an absolute local path (executable directly when the local executor is connected, e.g. /Users/you/Downloads/to-check)',
-    '检测到 Skill 含脚本，但本地执行器未连接，本次将以纯模型模式执行（在本机运行 python3 skill-forge-host.py 并点「检测」可真执行）':
-      'This Skill contains scripts but the local executor is offline. Falling back to model-only mode (run `python3 skill-forge-host.py` locally and click Check to execute for real)',
+    '检测到 Skill 含脚本，但本地执行器未连接，本次将以纯模型模式执行（双击「安装执行器自启.command」后自动连接即可真执行）':
+      'This Skill contains scripts but the local executor is offline. Falling back to model-only mode (double-click “安装执行器自启.command” once — it will connect automatically and execute for real)',
     '正在把技能包安装到本地执行器…': 'Installing skill package to the local executor…',
     '模型思考中…（第 ': 'Model thinking… (round ',
     ' 轮）': ')',

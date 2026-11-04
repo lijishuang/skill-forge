@@ -35,9 +35,10 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.2.0"
+VERSION = "1.3.0"
 BASE_DIR = os.path.expanduser("~/.skill-forge")
 SKILLS_DIR = os.path.join(BASE_DIR, "skills")
 MAX_BODY = 64 * 1024 * 1024        # 64MB，足够文本型技能包
@@ -268,6 +269,16 @@ def main():
     ap.add_argument("--port", type=int, default=39217)
     ap.add_argument("--host", default="127.0.0.1")
     args = ap.parse_args()
+    # 已有执行器在线时直接正常退出（launchd 守护重启场景： SuccessfulExit=false 不会再拉起）
+    try:
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))   # 绕过系统代理访问本机
+        with opener.open("http://127.0.0.1:%d/ping" % args.port, timeout=1) as resp:
+            info = json.loads(resp.read().decode("utf-8"))
+            if info.get("ok"):
+                print("[host] 端口 %d 已有执行器在线（v%s），无需重复启动" % (args.port, info.get("version", "?")))
+                return
+    except Exception:
+        pass
     os.makedirs(SKILLS_DIR, exist_ok=True)
     srv = ThreadingHTTPServer((args.host, args.port), Handler)
     print("=" * 56)
