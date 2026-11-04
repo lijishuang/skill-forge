@@ -707,15 +707,64 @@ async function hostExec(cwd, command) {
   return j;
 }
 /* 从模型回复中解析 {"action":"exec"|"final",...}（容忍代码围栏与多余文字） */
+/* 修复 JSON 字符串内的裸控制字符（真实换行/制表符——严格 JSON 不允许，但模型常犯） */
+function __sfFixCtrl(s) {
+  let out = '', inStr = false, esc = false;
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (inStr) {
+      if (esc) { esc = false; out += ch; continue; }
+      if (ch === '\\') { esc = true; out += ch; continue; }
+      if (ch === '"') { inStr = false; out += ch; continue; }
+      if (ch === '\n') { out += '\\n'; continue; }
+      if (ch === '\r') continue;
+      if (ch === '\t') { out += '\\t'; continue; }
+      out += ch;
+    } else {
+      if (ch === '"') inStr = true;
+      out += ch;
+    }
+  }
+  return out;
+}
+/* 修复被 max_tokens 截断的 JSON：闭合未结束的字符串与括号 */
+function __sfCloseOpen(s) {
+  let inStr = false, esc = false; const stack = [];
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (ch === '\\') esc = true;
+      else if (ch === '"') inStr = false;
+    } else {
+      if (ch === '"') inStr = true;
+      else if (ch === '{' || ch === '[') stack.push(ch);
+      else if (ch === '}' || ch === ']') stack.pop();
+    }
+  }
+  let fixed = s;
+  if (esc) fixed = fixed.slice(0, -1);
+  if (inStr) fixed += '"';
+  for (let i = stack.length - 1; i >= 0; i--) fixed += (stack[i] === '{' ? '}' : ']');
+  return fixed;
+}
 function hostParseAction(text) {
-  const tryParse = s => { try { const j = JSON.parse(s); return (j && j.action) ? j : null; } catch (e) { return null; } };
+  const ok = j => (j && j.action) ? j : null;
+  const tryParse = s => {
+    s = String(s || '').trim();
+    if (!s) return null;
+    try { return ok(JSON.parse(s)); } catch (e) {}
+    try { return ok(JSON.parse(__sfFixCtrl(s))); } catch (e) {}
+    try { return ok(JSON.parse(__sfCloseOpen(__sfFixCtrl(s)))); } catch (e) {}
+    return null;
+  };
   const fences = [...String(text || '').matchAll(/```(?:json)?\s*([\s\S]*?)```/gi)].map(m => m[1]);
   for (let k = fences.length - 1; k >= 0; k--) { const j = tryParse(fences[k].trim()); if (j) return j; }
   const t = String(text || '');
   let end = t.length;
   while (end > 0) {
     const i = t.lastIndexOf('{', end - 1);
-    if (i < 0) return null;
+    if (i < 0) break;
     let depth = 0;
     for (let p = i; p < t.length; p++) {
       if (t[p] === '{') depth++;
@@ -726,6 +775,9 @@ function hostParseAction(text) {
     }
     end = i;
   }
+  /* 截断的 JSON 没有闭合大括号，上面的平衡扫描找不到——从第一个 { 开始整体修复重试 */
+  const f = t.indexOf('{');
+  if (f >= 0) { const j = tryParse(t.slice(f)); if (j) return j; }
   return null;
 }
 /* 底层执行主循环：模型每轮返回 exec（执行一条命令）或 final（给出最终结果） */
@@ -1038,7 +1090,7 @@ async function run() {
         const res = await fetch(c.base.replace(/\/+$/, '') + '/chat/completions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + c.key },
-          body: JSON.stringify({ model: c.model, messages: msgs, stream: false, temperature: 0.3 })
+          body: JSON.stringify({ model: c.model, messages: msgs, stream: false, temperature: 0.3, max_tokens: 8192 })
         });
         if (!res.ok) {
           let d = ''; try { const je = await res.json(); d = (je.error && (je.error.message || JSON.stringify(je.error))) || ''; } catch (e) {}
