@@ -266,6 +266,8 @@
 
   /* 带变量的动态文案 */
   const PATTERNS = [
+    [/^已选文件将随技能包上传到执行器 input\/ 目录（共 (\d+) 个），执行时请用其 input\/ 相对路径：\n([\s\S]*)$/,
+      (m) => 'Selected files will be uploaded to the executor under input/ (' + m[1] + ' files); use their input/ relative paths when running:\n' + m[2]],
     [/^(\d+) 个$/, (m) => m[1]],
     [/^(\d+) 条$/, (m) => m[1] + (m[1] === '1' ? ' item' : ' items')],
     [/^(\d+) 个字段$/, (m) => m[1] + (m[1] === '1' ? ' field' : ' fields')],

@@ -295,7 +295,32 @@ async function folderCollectText(fields, getBox) {
   }
   return text;
 }
-window.__folderTest = { folderIsText, folderFmtSize, buildFolderUI, folderPick, folderPickFiles, folderOpenFile, folderCollectText };
+/* 把文件读成 base64（分块避免栈溢出） */
+async function b64OfFile(file) {
+  const buf = await file.arrayBuffer();
+  const bytes = new Uint8Array(buf);
+  let bin = '';
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk)
+    bin += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+  return btoa(bin);
+}
+/* 收集勾选文件为 {path: 'input/<原相对路径>', b64} 列表（真执行模式随技能包上传，含二进制） */
+async function folderCollectFiles(fields, getBox) {
+  const out = [];
+  for (const f of fields) {
+    if (f.type !== 'folder' || f._hidden) continue;
+    const box = getBox(f);
+    const st = box && box._folderState;
+    if (!st) continue;
+    for (const it of st.files) {
+      if (!st.included.has(it.path)) continue;
+      try { out.push({ path: 'input/' + it.path, b64: await b64OfFile(it.file) }); } catch (e) {}
+    }
+  }
+  return out;
+}
+window.__folderTest = { folderIsText, folderFmtSize, buildFolderUI, folderPick, folderPickFiles, folderOpenFile, folderCollectText, folderCollectFiles, b64OfFile };
 
 /* ===== host 本地执行器 START ===== */
 /* 让上传的 Skill 包被「真正执行」（scripts/ 里的 python/shell 真跑），
@@ -320,7 +345,8 @@ async function hostPing(force) {
 const hostHasScripts = refs => (refs || []).some(r =>
   /(^|\/)(scripts?|bin)\//i.test(r.name) || /\.(py|sh)$/i.test(r.name));
 async function hostUploadSkill(name, files) {
-  const body = { name, files: files.map(f => ({ path: f.path, b64: btoa(unescape(encodeURIComponent(f.content))) })) };
+  /* files 项：{path, content(文本)} 或 {path, b64(已编码，二进制文件用)} */
+  const body = { name, files: files.map(f => ({ path: f.path, b64: f.b64 != null ? f.b64 : btoa(unescape(encodeURIComponent(f.content))) })) };
   const r = await fetch(hostBase() + '/upload', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   const j = await r.json();
@@ -547,7 +573,9 @@ async function hostAgentRun(o) {
         const st = box && box._folderState;
         const picks = st ? st.files.filter(x => st.included.has(x.path)) : [];
         if (picks.length) {
-          values[f.key] = I18N.tr('本地待检文件清单（内容已附在系统提示「### 本地文件」小节，可直接引用）：\n' + picks.map(x => '- ' + x.path).join('\n'));
+          values[f.key] = hostMode
+            ? I18N.tr('已选文件将随技能包上传到执行器 input/ 目录（共 ' + picks.length + ' 个），执行时请用其 input/ 相对路径：\n' + picks.map(x => '- input/' + x.path).join('\n'))
+            : I18N.tr('本地待检文件清单（内容已附在系统提示「### 本地文件」小节，可直接引用）：\n' + picks.map(x => '- ' + x.path).join('\n'));
           visibleCount++;
         }
         continue;   // 目录允许为空，不强制
@@ -578,20 +606,30 @@ async function hostAgentRun(o) {
       let transcript = '';
       try {
         $('stat').textContent = I18N.tr('正在把技能包安装到本地执行器…');
+        /* 收集勾选的本地文件（含二进制），随技能包一并上传到 input/ 目录 */
+        const inputFiles = await folderCollectFiles(D.fields, f => document.querySelector('#form .field[data-fkey="' + f.key + '"]'));
         const files = [{ path: 'SKILL.md', content: D.raw || ('---\nname: ' + D.name + '\ndescription: ' + (D.description || '') + '\n---\n\n' + D.body) }]
-          .concat((D.refs || []).filter(r => r.content).map(r => ({ path: r.name, content: r.content })));
+          .concat((D.refs || []).filter(r => r.content).map(r => ({ path: r.name, content: r.content })))
+          .concat(inputFiles);
         const up = await hostUploadSkill(D.name, files);
-        print('[host] 技能包已安装：' + up.dir + '（' + up.files + ' 个文件）');
+        print('[host] 技能包已安装：' + up.dir + '（' + up.files + ' 个文件' + (inputFiles.length ? '，含 ' + inputFiles.length + ' 个待检文件已放入 input/' : '') + '）');
         const scriptList = (D.refs || []).filter(r => r.content && /\.(py|sh)$/i.test(r.name))
           .map(r => '- ' + r.name).join('\n');
-        const folderText = await folderCollectText(D.fields, f => document.querySelector('#form .field[data-fkey="' + f.key + '"]'));
+        const inputNote = inputFiles.length
+          ? '用户选择的待检文件已上传到技能目录的 input/ 子目录（相对路径保持原样，如 input/xxx.py）。处理目标就是这些文件，请直接对 input/ 下的文件执行。\n'
+          : '';
         const sys = '你是一个执行「Skill」的助手，运行在用户本机的命令执行环境中。\n'
           + '# Skill 名称\n' + D.name + '\n'
           + (D.description ? '# 描述\n' + D.description + '\n' : '')
-          + '# 完整指令\n' + D.body + refText + folderText
+          + '# 完整指令\n' + D.body + refText
           + '\n\n# 本地执行环境\n技能包已安装到目录：' + up.dir + '（命令默认在此目录执行，SKILL.md 在该目录下，脚本如 scripts/xxx.py 位于其子目录）\n'
           + (scriptList ? '可用脚本：\n' + scriptList + '\n' : '')
-          + '命令最长可运行 900 秒，输出会回传给你。用户提供的本地目录/文件是本机真实绝对路径，可直接在命令中使用；python3 可用，脚本缺依赖时先 pip3 install。\n'
+          + inputNote
+          + '命令最长可运行 900 秒，输出会回传给你。用户提供的本地目录/文件是本机真实路径，可直接在命令中使用；python3 可用，脚本缺依赖时先 pip3 install。\n'
+          + '# 执行要求（必须遵守）\n'
+          + '1. 必须通过执行命令来完成任务：优先按 Skill 指令运行其自带的脚本（如 python3 scripts/xxx.py …）处理目标文件/目录，让脚本真实运行并基于其真实输出给出结论。\n'
+          + '2. 禁止不运行脚本、仅凭阅读文件内容就直接给出分析报告——口头分析不是有效执行。\n'
+          + '3. 若脚本报错，读取输出、修复调用方式（缺依赖先 pip3 install）后重试。\n'
           + '# 输出协议（严格遵守）\n每次回复只输出一个 JSON 对象，二选一：\n'
           + '{"action":"exec","command":"要执行的一条 shell 命令"}\n'
           + '{"action":"final","answer":"给用户的最终结果（完整保留 Skill 要求的格式，如报告/JSON/HTML）"}\n'

@@ -34,7 +34,7 @@ import sys
 import tempfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 BASE_DIR = os.path.expanduser("~/.skill-forge")
 SKILLS_DIR = os.path.join(BASE_DIR, "skills")
 MAX_BODY = 64 * 1024 * 1024        # 64MB，足够文本型技能包
@@ -114,7 +114,7 @@ class Handler(BaseHTTPRequestHandler):
         except Exception as e:
             self._reply({"ok": False, "error": str(e)}, 400)
 
-    # ---- /upload：安装技能包 ----
+    # ---- /upload：安装技能包（merge=true 时追加文件而不清空） ----
     def _upload(self):
         data = self._body()
         name = safe_name(data.get("name"))
@@ -122,7 +122,7 @@ class Handler(BaseHTTPRequestHandler):
         if not files:
             raise ValueError("no files")
         dest = os.path.join(SKILLS_DIR, name)
-        if os.path.isdir(dest):
+        if not data.get("merge") and os.path.isdir(dest):
             shutil.rmtree(dest)
         os.makedirs(dest, exist_ok=True)
         count = 0
