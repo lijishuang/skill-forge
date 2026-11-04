@@ -782,26 +782,50 @@ function hostParseAction(text) {
 }
 /* 底层执行主循环：模型每轮返回 exec（执行一条命令）或 final（给出最终结果） */
 async function hostAgentRun(o) {
+  const MAX_EXEC = (o.maxRounds | 0) || 40;   /* 命令执行轮上限 */
+  const MAX_BAD = 6;                          /* 连续无效 JSON 上限（不占用执行轮预算） */
+  const LOOP_WARN = 3, LOOP_STOP = 5;         /* 相同命令重复阈值 */
   const msgs = [{ role: 'system', content: o.sys }, { role: 'user', content: o.user }];
-  for (let round = 1; round <= 15; round++) {
-    o.status('模型思考中…（第 ' + round + ' 轮）');
+  let rounds = 0, bad = 0, lastCmd = '', same = 0, lastSnippet = '';
+  for (;;) {
+    if (rounds >= MAX_EXEC) {
+      o.print('⚠️ 已执行 ' + rounds + ' 轮命令达到上限，正在让模型总结收尾…');
+      const fin = await hostForceFinal(o, msgs, '已执行的命令轮数达到上限（' + MAX_EXEC + ' 轮）');
+      if (fin != null) return fin;
+      throw new Error('执行轮次超限（' + MAX_EXEC + ' 轮）且模型未能收尾。任务较复杂或陷入循环，可重试或拆分为更小的任务');
+    }
+    if (bad >= MAX_BAD) {
+      o.print('⚠️ 模型连续 ' + bad + ' 轮未返回有效 JSON 指令，正在尝试收尾…');
+      const fin = await hostForceFinal(o, msgs, '你连续多次未按 JSON 指令格式回复');
+      if (fin != null) return fin;
+      throw new Error('模型连续 ' + bad + ' 次未返回有效的 JSON 指令（需要 {"action":"exec"} 或 {"action":"final"}）。最后回复片段：' + lastSnippet);
+    }
+    rounds++;
+    o.status('模型思考中…（第 ' + rounds + ' 轮）');
     const text = await o.chat(msgs);
     const act = hostParseAction(text);
     if (act) act.action = String(act.action || '').toLowerCase();
     if (!act) {
-      const snippet = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 200) || '(空回复)';
-      if (round < 15) {
-        o.print('⚠️ 第 ' + round + ' 轮回复不是有效 JSON 指令，已要求模型重试。回复片段：' + snippet);
-        msgs.push({ role: 'assistant', content: text },
-                  { role: 'user', content: '你的回复必须是单个 JSON 对象：{"action":"exec","command":"要执行的命令"} 或 {"action":"final","answer":"最终结果"}，不要包含任何其他文字或解释。请重新回复。' });
-        continue;
-      }
-      throw new Error('模型连续未返回有效的 JSON 指令（需要 {"action":"exec"} 或 {"action":"final"}）。最后回复片段：' + snippet);
+      bad++;
+      lastSnippet = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 200) || '(空回复)';
+      o.print('⚠️ 第 ' + rounds + ' 轮回复不是有效 JSON 指令，已要求模型重试（' + bad + '/' + MAX_BAD + '）。回复片段：' + lastSnippet);
+      msgs.push({ role: 'assistant', content: text },
+                { role: 'user', content: '你的回复必须是单个 JSON 对象：{"action":"exec","command":"要执行的命令"} 或 {"action":"final","answer":"最终结果"}，不要包含任何其他文字或解释。请重新回复。' });
+      continue;
     }
+    bad = 0;
     if (act.action === 'final') return String(act.answer == null ? '' : act.answer);
     if (act.action === 'exec') {
       const cmd = String(act.command || '').trim();
       if (!cmd) { msgs.push({ role: 'assistant', content: text }, { role: 'user', content: 'command 为空，请重新给出。' }); continue; }
+      same = (cmd === lastCmd) ? same + 1 : 1; lastCmd = cmd;
+      if (same === LOOP_WARN) o.print('⚠️ 相同命令已连续执行 ' + same + ' 次，若上一步已成功请直接返回 final；若持续失败请更换方法。');
+      if (same >= LOOP_STOP) {
+        o.print('⚠️ 相同命令已连续执行 ' + same + ' 次，判定陷入循环，正在让模型总结收尾…');
+        const fin = await hostForceFinal(o, msgs, '命令「' + cmd.slice(0, 80) + '」已连续执行 ' + same + ' 次且结果相同');
+        if (fin != null) return fin;
+        throw new Error('检测到死循环：相同命令连续执行 ' + same + ' 次且模型未能收尾，请更换指令或拆分任务');
+      }
       o.print('$ ' + cmd);
       let out, code;
       try { const r = await hostExec(o.dir, cmd); out = r.output; code = r.code; }
@@ -814,7 +838,23 @@ async function hostAgentRun(o) {
     }
     msgs.push({ role: 'assistant', content: text }, { role: 'user', content: '无法识别的 action，请返回 exec 或 final。' });
   }
-  throw new Error('执行轮次超限（15 轮），Skill 可能陷入循环，请检查指令');
+}
+/* 强制收尾：让模型立即停止执行命令，基于已有进度给出 final；失败返回 null 走原错误路径 */
+async function hostForceFinal(o, msgs, reason) {
+  try {
+    o.status('模型总结收尾中…');
+    msgs.push({ role: 'user', content: '【系统提示】' + reason + '。请立即停止执行命令，基于以上已完成的进度返回 {"action":"final","answer":"进度总结或最终结果"}，不要再返回 exec。' });
+    const text = await o.chat(msgs);
+    const act = hostParseAction(text);
+    if (act && String(act.action || '').toLowerCase() === 'final') return String(act.answer == null ? '' : act.answer);
+  } catch (e) { /* 收尾失败时按正常错误路径抛出 */ }
+  return null;
+}
+/* 仅 API/传输类错误提示「常见原因」；轮次超限、死循环等本地逻辑错误不误导用户 */
+function hostErrHint(e) {
+  const m = String((e && e.message) || '');
+  if (/^(执行轮次超限|模型连续|检测到死循环)/.test(m)) return '';
+  return I18N.tr('\n\n常见原因：接口地址需以 /v1 结尾；Key 无效或额度不足；浏览器跨域限制。');
 }
 /* 读取执行器上的文件（返回 UTF-8 文本；≤20MB） */
 async function hostReadFile(path) {
@@ -1123,7 +1163,7 @@ async function run() {
       await saveHistory();
     } catch (e) {
       setRun(false, '执行失败：' + e.message, 'err');
-      $('output').textContent += '\n❌ ' + e.message;
+      $('output').textContent += '\n❌ ' + e.message + hostErrHint(e);
     }
     return;
   }
