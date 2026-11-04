@@ -214,7 +214,15 @@ function buildFolderUI(f, d, ctx) {
   const listWrap = document.createElement('div');
   listWrap.classList.add(ctx.hideCls);
   listWrap.innerHTML = '<div class="fbar"><label class="fall"><input type="checkbox" class="fall-ck"> <span>' + ctx.tr('全选') + '</span></label><span class="fcnt"></span></div><div class="fitems"></div>';
-  d.appendChild(pickRow); d.appendChild(listWrap);
+  /* 绝对路径输入：连接本地执行器（底层真执行）时，可直接使用本机真实路径 */
+  const pathRow = document.createElement('div');
+  pathRow.style.cssText = 'display:flex;align-items:center;gap:6px;margin-bottom:6px';
+  const pathIn = document.createElement('input');
+  pathIn.className = 'fpath'; pathIn.type = 'text';
+  pathIn.placeholder = ctx.tr('或粘贴本地绝对路径（连接本地执行器后可直接执行，如 /Users/you/Downloads/待检目录）');
+  pathIn.style.cssText = 'flex:1;font-size:12px;padding:6px 8px';
+  pathRow.appendChild(pathIn);
+  d.appendChild(pickRow); d.appendChild(pathRow); d.appendChild(listWrap);
   const itemsEl = listWrap.querySelector('.fitems');
   const fall = listWrap.querySelector('.fall-ck');
   const updCnt = () => {
@@ -288,6 +296,99 @@ async function folderCollectText(fields, getBox) {
   return text;
 }
 window.__folderTest = { folderIsText, folderFmtSize, buildFolderUI, folderPick, folderPickFiles, folderOpenFile, folderCollectText };
+
+/* ===== host 本地执行器 START ===== */
+/* 让上传的 Skill 包被「真正执行」（scripts/ 里的 python/shell 真跑），
+   而非只把 SKILL.md 塞给模型口头模拟。
+   前置条件：本机运行 python3 skill-forge-host.py（默认 http://127.0.0.1:39217）。
+   本块为共享代码，app.js 与 tool.js 通过 START/END 标记保持同步。 */
+const HOST_DEFAULT_BASE = 'http://127.0.0.1:39217';
+const __host = { ok: false, checkedAt: 0, base: '' };
+try { __host.base = localStorage.getItem('sf_host_base') || HOST_DEFAULT_BASE; } catch (e) { __host.base = HOST_DEFAULT_BASE; }
+const hostBase = () => (__host.base || HOST_DEFAULT_BASE).replace(/\/+$/, '');
+async function hostPing(force) {
+  if (!force && __host.ok && Date.now() - __host.checkedAt < 30000) return true;
+  try {
+    const r = await fetch(hostBase() + '/ping', { signal: AbortSignal.timeout(2500) });
+    __host.info = await r.json();
+    __host.ok = !!(__host.info && __host.info.ok);
+  } catch (e) { __host.ok = false; __host.info = null; }
+  __host.checkedAt = Date.now();
+  if (typeof window !== 'undefined' && typeof window.__hostUIRefresh === 'function') window.__hostUIRefresh();
+  return __host.ok;
+}
+const hostHasScripts = refs => (refs || []).some(r =>
+  /(^|\/)(scripts?|bin)\//i.test(r.name) || /\.(py|sh)$/i.test(r.name));
+async function hostUploadSkill(name, files) {
+  const body = { name, files: files.map(f => ({ path: f.path, b64: btoa(unescape(encodeURIComponent(f.content))) })) };
+  const r = await fetch(hostBase() + '/upload', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const j = await r.json();
+  if (!j.ok) throw new Error('技能包安装失败：' + (j.error || ('HTTP ' + r.status)));
+  return j;
+}
+async function hostExec(cwd, command) {
+  const r = await fetch(hostBase() + '/exec', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cwd, command, timeout: 900 }) });
+  const j = await r.json();
+  if (!j.ok) throw new Error('执行器错误：' + (j.error || ('HTTP ' + r.status)));
+  return j;
+}
+/* 从模型回复中解析 {"action":"exec"|"final",...}（容忍代码围栏与多余文字） */
+function hostParseAction(text) {
+  const tryParse = s => { try { const j = JSON.parse(s); return (j && j.action) ? j : null; } catch (e) { return null; } };
+  const fences = [...String(text || '').matchAll(/```(?:json)?\s*([\s\S]*?)```/gi)].map(m => m[1]);
+  for (let k = fences.length - 1; k >= 0; k--) { const j = tryParse(fences[k].trim()); if (j) return j; }
+  const t = String(text || '');
+  let end = t.length;
+  while (end > 0) {
+    const i = t.lastIndexOf('{', end - 1);
+    if (i < 0) return null;
+    let depth = 0;
+    for (let p = i; p < t.length; p++) {
+      if (t[p] === '{') depth++;
+      else if (t[p] === '}') {
+        depth--;
+        if (!depth) { const j = tryParse(t.slice(i, p + 1)); if (j) return j; break; }
+      }
+    }
+    end = i;
+  }
+  return null;
+}
+/* 底层执行主循环：模型每轮返回 exec（执行一条命令）或 final（给出最终结果） */
+async function hostAgentRun(o) {
+  const msgs = [{ role: 'system', content: o.sys }, { role: 'user', content: o.user }];
+  for (let round = 1; round <= 15; round++) {
+    o.status('模型思考中…（第 ' + round + ' 轮）');
+    const text = await o.chat(msgs);
+    const act = hostParseAction(text);
+    if (!act) throw new Error('模型未返回有效的 JSON 指令（需要 {"action":"exec"} 或 {"action":"final"}）');
+    if (act.action === 'final') return String(act.answer == null ? '' : act.answer);
+    if (act.action === 'exec') {
+      const cmd = String(act.command || '').trim();
+      if (!cmd) { msgs.push({ role: 'assistant', content: text }, { role: 'user', content: 'command 为空，请重新给出。' }); continue; }
+      if (!o.auto && !confirm('本地执行器将运行命令：\n\n' + cmd + '\n\n允许执行？')) {
+        msgs.push({ role: 'assistant', content: text },
+          { role: 'user', content: '用户拒绝了该命令。请改用其他方式，或直接给出最终结果 {"action":"final","answer":"…"}。' });
+        continue;
+      }
+      o.print('$ ' + cmd);
+      let out, code;
+      try { const r = await hostExec(o.dir, cmd); out = r.output; code = r.code; }
+      catch (e) { out = '[执行器错误] ' + e.message; code = -1; }
+      o.print(out || '(无输出)');
+      const feed = out.length > 16000 ? out.slice(-16000) : out;
+      msgs.push({ role: 'assistant', content: text },
+        { role: 'user', content: '命令退出码 ' + code + '，输出：\n```\n' + feed + '\n```\n继续：还需执行命令就返回 {"action":"exec","command":"…"}；任务已完成就返回 {"action":"final","answer":"最终结果"}。' });
+      continue;
+    }
+    msgs.push({ role: 'assistant', content: text }, { role: 'user', content: '无法识别的 action，请返回 exec 或 final。' });
+  }
+  throw new Error('执行轮次超限（15 轮），Skill 可能陷入循环，请检查指令');
+}
+/* ===== host 本地执行器 END ===== */
 
 /* ===== 主流程 ===== */
 (async function main() {
@@ -385,6 +486,23 @@ window.__folderTest = { folderIsText, folderFmtSize, buildFolderUI, folderPick, 
     $(p[0]).addEventListener('change', () => { saved[p[1]] = $(p[0]).value.trim(); persist(); });
   });
 
+  /* 本地执行器状态 UI */
+  function hostUIRefresh() {
+    const d = $('hostDot'), l = $('hostLabel');
+    if (!d || !l) return;
+    d.className = 'host-dot' + (__host.ok ? ' on' : '');
+    l.textContent = __host.ok
+      ? I18N.tr('本地执行器：已连接 v') + ((__host.info && __host.info.version) || '')
+      : I18N.tr('本地执行器：未连接（本机运行 python3 skill-forge-host.py 后点「检测」）');
+  }
+  window.__hostUIRefresh = hostUIRefresh;
+  $('hostCheck').onclick = () => {
+    const l = $('hostLabel');
+    if (l) l.textContent = I18N.tr('本地执行器：检测中…');
+    hostPing(true);
+  };
+  setTimeout(() => hostPing(), 0);
+
   $('btnClear').onclick = () => {
     document.querySelectorAll('#form [data-key]').forEach(el => {
       if (el.type === 'checkbox') el.checked = false; else el.value = '';
@@ -411,12 +529,26 @@ window.__folderTest = { folderIsText, folderFmtSize, buildFolderUI, folderPick, 
     const base = $('cBase').value.trim(), key = $('cKey').value.trim(), model = $('cModel').value.trim();
     if (!base || !key || !model) { toast('请先填写模型配置（地址 / Key / 模型）'); return; }
     applyLinkage();
+    /* 底层真执行判定：Skill 带脚本 且 本地执行器在线 */
+    const skillHasScripts = hostHasScripts(D.refs);
+    const hostOK = await hostPing();
+    if (skillHasScripts && !hostOK)
+      toast(I18N.tr('检测到 Skill 含脚本，但本地执行器未连接，本次将以纯模型模式执行（在本机运行 python3 skill-forge-host.py 并点「检测」可真执行）'));
+    const hostMode = hostOK && skillHasScripts;
     const values = {};
     let visibleCount = 0;
     for (const f of D.fields) {
       if (f._hidden) continue;   // 联动隐藏的字段不参与执行
       if (f.type === 'folder') {
         const box = document.querySelector('#form .field[data-fkey="' + f.key + '"]');
+        /* 真执行模式优先使用用户粘贴的本地绝对路径（模型可在命令中直接访问） */
+        const pathEl = box && box.querySelector('.fpath');
+        const localPath = pathEl ? pathEl.value.trim() : '';
+        if (hostMode && localPath) {
+          values[f.key] = I18N.tr('本地待检目录（本机绝对路径，可在命令中直接使用）：') + localPath;
+          visibleCount++;
+          continue;
+        }
         const st = box && box._folderState;
         const picks = st ? st.files.filter(x => st.included.has(x.path)) : [];
         if (picks.length) {
@@ -434,6 +566,72 @@ window.__folderTest = { folderIsText, folderFmtSize, buildFolderUI, folderPick, 
     if (!visibleCount) { toast('没有可见的输入字段，请检查参数联动设置'); return; }
     let refText = '';
     (D.refs || []).forEach(r => { refText += '\n\n### 参考文件：' + r.name + '\n' + String(r.content).slice(0, 8000); });
+
+    /* ===== 底层真执行：安装技能包 → 模型驱动命令循环 ===== */
+    if (hostMode) {
+      running = true; $('btnRun').disabled = true;
+      $('out').setAttribute('data-noi18n', '1');
+      $('out').classList.remove('md'); $('out').classList.add('term');
+      $('out').textContent = ''; $('out').classList.remove('hide');
+      $('btnRender').classList.add('hide');
+      const print = line => {
+        const s = (transcript ? '\n' : '') + line;
+        transcript += s;
+        $('out').textContent += ($('out').textContent ? '\n' : '') + line;
+        $('out').scrollTop = $('out').scrollHeight;
+      };
+      let transcript = '';
+      try {
+        $('stat').textContent = I18N.tr('正在把技能包安装到本地执行器…');
+        const files = [{ path: 'SKILL.md', content: D.raw || ('---\nname: ' + D.name + '\ndescription: ' + (D.description || '') + '\n---\n\n' + D.body) }]
+          .concat((D.refs || []).filter(r => r.content).map(r => ({ path: r.name, content: r.content })));
+        const up = await hostUploadSkill(D.name, files);
+        print('[host] 技能包已安装：' + up.dir + '（' + up.files + ' 个文件）');
+        const scriptList = (D.refs || []).filter(r => r.content && /\.(py|sh)$/i.test(r.name))
+          .map(r => '- ' + r.name).join('\n');
+        const folderText = await folderCollectText(D.fields, f => document.querySelector('#form .field[data-fkey="' + f.key + '"]'));
+        const sys = '你是一个执行「Skill」的助手，运行在用户本机的命令执行环境中。\n'
+          + '# Skill 名称\n' + D.name + '\n'
+          + (D.description ? '# 描述\n' + D.description + '\n' : '')
+          + '# 完整指令\n' + D.body + refText + folderText
+          + '\n\n# 本地执行环境\n技能包已安装到目录：' + up.dir + '（命令默认在此目录执行，SKILL.md 在该目录下，脚本如 scripts/xxx.py 位于其子目录）\n'
+          + (scriptList ? '可用脚本：\n' + scriptList + '\n' : '')
+          + '命令最长可运行 900 秒，输出会回传给你。用户提供的本地目录/文件是本机真实绝对路径，可直接在命令中使用；python3 可用，脚本缺依赖时先 pip3 install。\n'
+          + '# 输出协议（严格遵守）\n每次回复只输出一个 JSON 对象，二选一：\n'
+          + '{"action":"exec","command":"要执行的一条 shell 命令"}\n'
+          + '{"action":"final","answer":"给用户的最终结果（完整保留 Skill 要求的格式，如报告/JSON/HTML）"}\n'
+          + '不要输出任何多余文字。需要多条命令就分多轮逐条执行；全部完成后再给 final。';
+        const user = '请执行此 Skill。输入参数：\n'
+          + Object.keys(values).map(k => '【' + k + '】\n' + values[k]).join('\n\n');
+        const auto = $('hostAuto') && $('hostAuto').checked;
+        const chatOnce = async msgs => {
+          const res = await fetch(base.replace(/\/+$/, '') + '/chat/completions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+            body: JSON.stringify({ model: model, messages: msgs, stream: false, temperature: 0.3 })
+          });
+          if (!res.ok) { let d = ''; try { d = (await res.json()).error.message || ''; } catch (e) {} throw new Error('HTTP ' + res.status + ' ' + d); }
+          return (await res.json()).choices[0].message.content.trim();
+        };
+        const answer = await hostAgentRun({
+          sys, user, dir: up.dir, auto,
+          status: s => { $('stat').textContent = I18N.tr(s); },
+          print,
+          chat: chatOnce
+        });
+        lastResult = answer;
+        finish();
+        /* finish 会把中栏重置为最终结果；这里恢复为「执行过程 + 最终结果」，与终端一致 */
+        $('out').textContent = transcript + '\n────────── 最终结果 ──────────\n' + answer;
+        $('stat').textContent = I18N.tr('完成（底层真执行 · 结果 ') + answer.length + I18N.tr(' 字符）');
+      } catch (e) {
+        $('stat').textContent = I18N.tr('执行失败');
+        $('out').textContent += '\n❌ ' + e.message + I18N.tr('\n\n常见原因：接口地址需以 /v1 结尾；Key 无效或额度不足；浏览器跨域限制。');
+      }
+      running = false; $('btnRun').disabled = false;
+      return;
+    }
+
     const folderText = await folderCollectText(D.fields, f => document.querySelector('#form .field[data-fkey="' + f.key + '"]'));
     // 告知模型：文件内容已附上，禁止以「缺少路径/无法访问」为由拒绝
     const folderNote = folderText ? '\n\n# 本地文件说明\n用户已在浏览器端选择了本地待检文件，内容已全文附在上方「### 本地文件：<路径>」小节中（路径为文件名/相对路径形式，浏览器安全机制不提供绝对路径）。你没有访问用户文件系统的能力，请直接基于已附上的文件内容执行 Skill；不要以「缺少文件路径」「无法访问文件」「无法执行本地自查」为由拒绝或要求补充信息。' : '';

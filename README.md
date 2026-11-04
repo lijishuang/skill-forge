@@ -40,6 +40,7 @@ Skill Forge is a **Manifest V3 browser extension** (works on Chrome / Edge / any
 | ⌨️ | **Terminal-faithful Output (NEW v1.5)** | Results render in a terminal pane byte-for-byte identical to the raw stream — no trimming, no rewriting; Markdown/HTML rendering is an explicit toggle |
 | 🖥️ | **3-Column Workbench (NEW v1.5)** | Left: inputs & model config · Middle: execution result, history & pages · Right: embedded browser that live-renders HTML results (or shows an explicit "N/A" when there is none) |
 | 📁 | **Local Folder Inspection (NEW v1.6)** | A `folder` field lets users pick a local directory ("待检目录"), browse its files, click any file to open/preview it, check the ones to submit — selected text files' contents are attached to the run automatically. Uses the File System Access API with a `webkitdirectory` fallback; binary files are detected and excluded |
+| ⚙️ | **Real Local Execution (NEW v1.7)** | Skills with `scripts/` can now **actually run on your machine** instead of being simulated by the model. Start the bundled single-file executor (`python3 skill-forge-host.py`, localhost-only, stdlib-only), and the extension installs the uploaded skill package to `~/.skill-forge/skills/`, then runs a model-driven command loop: the model proposes shell commands → the executor really runs them → output streams back — until the final result. Per-command confirmation by default ("auto-run" opt-in), and the folder field accepts absolute local paths for direct file access |
 
 ## 🚀 Quick Start
 

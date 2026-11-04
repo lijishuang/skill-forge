@@ -36,6 +36,12 @@
         <label class="f">API 地址（以 /v1 结尾）</label><input id="cBase" placeholder="https://api.deepseek.com/v1">
         <label class="f">API Key</label><input id="cKey" type="password" placeholder="sk-…">
         <label class="f">模型名称</label><input id="cModel" placeholder="deepseek-chat">
+        <div class="host-row">
+          <span id="hostDot" class="host-dot"></span>
+          <span id="hostLabel" style="flex:1;min-width:180px">本地执行器：未检测</span>
+          <button type="button" id="hostCheck">检测</button>
+          <label><input type="checkbox" id="hostAuto"> 自动执行命令</label>
+        </div>
       </details>
     </div>
   </div>
