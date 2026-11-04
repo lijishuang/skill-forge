@@ -444,14 +444,17 @@ async function hostAgentRun(o) {
   const LOOP_WARN = 3, LOOP_STOP = 5;         /* 相同命令重复阈值 */
   const msgs = [{ role: 'system', content: o.sys }, { role: 'user', content: o.user }];
   let rounds = 0, bad = 0, lastCmd = '', same = 0, lastSnippet = '';
+  const T = o.trace || (() => {});
   for (;;) {
     if (rounds >= MAX_EXEC) {
+      T({ k: 'limit', round: rounds, max: MAX_EXEC });
       o.print('⚠️ 已执行 ' + rounds + ' 轮命令达到上限，正在让模型总结收尾…');
       const fin = await hostForceFinal(o, msgs, '已执行的命令轮数达到上限（' + MAX_EXEC + ' 轮）');
       if (fin != null) return fin;
       throw new Error('执行轮次超限（' + MAX_EXEC + ' 轮）且模型未能收尾。任务较复杂或陷入循环，可重试或拆分为更小的任务');
     }
     if (bad >= MAX_BAD) {
+      T({ k: 'limit', round: rounds, bad: bad, maxBad: MAX_BAD });
       o.print('⚠️ 模型连续 ' + bad + ' 轮未返回有效 JSON 指令，正在尝试收尾…');
       const fin = await hostForceFinal(o, msgs, '你连续多次未按 JSON 指令格式回复');
       if (fin != null) return fin;
@@ -459,34 +462,49 @@ async function hostAgentRun(o) {
     }
     rounds++;
     o.status('模型思考中…（第 ' + rounds + ' 轮）');
+    T({ k: 'chatStart', round: rounds });
+    const tChat = Date.now();
     const text = await o.chat(msgs);
+    T({ k: 'chat', round: rounds, ms: Date.now() - tChat });
     const act = hostParseAction(text);
     if (act) act.action = String(act.action || '').toLowerCase();
     if (!act) {
       bad++;
       lastSnippet = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 200) || '(空回复)';
+      T({ k: 'retry', round: rounds, bad: bad, max: MAX_BAD });
       o.print('⚠️ 第 ' + rounds + ' 轮回复不是有效 JSON 指令，已要求模型重试（' + bad + '/' + MAX_BAD + '）。回复片段：' + lastSnippet);
       msgs.push({ role: 'assistant', content: text },
                 { role: 'user', content: '你的回复必须是单个 JSON 对象：{"action":"exec","command":"要执行的命令"} 或 {"action":"final","answer":"最终结果"}，不要包含任何其他文字或解释。请重新回复。' });
       continue;
     }
     bad = 0;
-    if (act.action === 'final') return String(act.answer == null ? '' : act.answer);
+    if (act.action === 'final') {
+      const ans = String(act.answer == null ? '' : act.answer);
+      T({ k: 'final', round: rounds, chars: ans.length });
+      return ans;
+    }
     if (act.action === 'exec') {
       const cmd = String(act.command || '').trim();
       if (!cmd) { msgs.push({ role: 'assistant', content: text }, { role: 'user', content: 'command 为空，请重新给出。' }); continue; }
       same = (cmd === lastCmd) ? same + 1 : 1; lastCmd = cmd;
-      if (same === LOOP_WARN) o.print('⚠️ 相同命令已连续执行 ' + same + ' 次，若上一步已成功请直接返回 final；若持续失败请更换方法。');
+      if (same === LOOP_WARN) {
+        T({ k: 'warn', round: rounds, same: same });
+        o.print('⚠️ 相同命令已连续执行 ' + same + ' 次，若上一步已成功请直接返回 final；若持续失败请更换方法。');
+      }
       if (same >= LOOP_STOP) {
+        T({ k: 'loop', round: rounds, same: same });
         o.print('⚠️ 相同命令已连续执行 ' + same + ' 次，判定陷入循环，正在让模型总结收尾…');
         const fin = await hostForceFinal(o, msgs, '命令「' + cmd.slice(0, 80) + '」已连续执行 ' + same + ' 次且结果相同');
         if (fin != null) return fin;
         throw new Error('检测到死循环：相同命令连续执行 ' + same + ' 次且模型未能收尾，请更换指令或拆分任务');
       }
+      T({ k: 'exec', round: rounds, cmd: cmd });
       o.print('$ ' + cmd);
       let out, code;
+      const tExec = Date.now();
       try { const r = await hostExec(o.dir, cmd); out = r.output; code = r.code; }
       catch (e) { out = '[执行器错误] ' + e.message; code = -1; }
+      T({ k: 'execDone', round: rounds, code: code, ms: Date.now() - tExec, lines: String(out || '').split('\n').length });
       o.print(out || '(无输出)');
       const feed = out.length > 16000 ? out.slice(-16000) : out;
       msgs.push({ role: 'assistant', content: text },
@@ -498,13 +516,18 @@ async function hostAgentRun(o) {
 }
 /* 强制收尾：让模型立即停止执行命令，基于已有进度给出 final；失败返回 null 走原错误路径 */
 async function hostForceFinal(o, msgs, reason) {
+  const T = o.trace || (() => {});
   try {
     o.status('模型总结收尾中…');
     msgs.push({ role: 'user', content: '【系统提示】' + reason + '。请立即停止执行命令，基于以上已完成的进度返回 {"action":"final","answer":"进度总结或最终结果"}，不要再返回 exec。' });
     const text = await o.chat(msgs);
     const act = hostParseAction(text);
-    if (act && String(act.action || '').toLowerCase() === 'final') return String(act.answer == null ? '' : act.answer);
+    if (act && String(act.action || '').toLowerCase() === 'final') {
+      T({ k: 'wrap', ok: true, chars: String(act.answer == null ? '' : act.answer).length });
+      return String(act.answer == null ? '' : act.answer);
+    }
   } catch (e) { /* 收尾失败时按正常错误路径抛出 */ }
+  T({ k: 'wrap', ok: false });
   return null;
 }
 /* 仅 API/传输类错误提示「常见原因」；轮次超限、死循环等本地逻辑错误不误导用户 */
@@ -512,6 +535,56 @@ function hostErrHint(e) {
   const m = String((e && e.message) || '');
   if (/^(执行轮次超限|模型连续|检测到死循环)/.test(m)) return '';
   return I18N.tr('\n\n常见原因：接口地址需以 /v1 结尾；Key 无效或额度不足；浏览器跨域限制。');
+}
+/* 轨迹时间线渲染：模型轮次 / 命令执行 / 重试 / 收尾 / 错误，相邻事件自动合并（app.js 同步） */
+function renderTraceHtml(steps) {
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const fmtMs = ms => ms >= 1000 ? (ms / 1000).toFixed(1) + ' s' : ms + ' ms';
+  if (!steps || !steps.length)
+    return '<div class="tr-empty">尚无执行轨迹——开始执行后，这里会逐步记录模型思考、命令执行、重试与收尾的完整过程。</div>';
+  let html = '';
+  for (let i = 0; i < steps.length; i++) {
+    const ev = steps[i];
+    let cls = '', lab = '', sub = '', cmd = '';
+    /* 合并：思考→执行命令→命令结束 合为一行；思考→重试 合为一行 */
+    const nx = steps[i + 1];
+    if (ev.k === 'exec' && nx && nx.k === 'execDone' && nx.round === ev.round) {
+      i++;
+      cls = nx.code ? 'err' : 'exec';
+      lab = '⌨ 第 ' + ev.round + ' 轮 · 执行命令';
+      cmd = ev.cmd;
+      sub = '<span class="tr-badge ' + (nx.code ? 'err' : 'ok') + '">退出码 ' + nx.code + '</span> 耗时 ' + fmtMs(nx.ms) + ' · 输出 ' + nx.lines + ' 行';
+    } else if (ev.k === 'chat' && nx && nx.k === 'retry' && nx.round === ev.round) {
+      i++;
+      cls = 'warn';
+      lab = '💭 第 ' + ev.round + ' 轮 · 回复不是有效 JSON';
+      sub = '已要求重试（' + nx.bad + '/' + nx.max + '）· 思考耗时 ' + fmtMs(ev.ms);
+    } else if (ev.k === 'chatStart') {
+      continue;
+    } else switch (ev.k) {
+      case 'start': cls = 'start'; lab = '📦 技能包已安装';
+        sub = esc(ev.dir) + '（' + ev.files + ' 个文件' + (ev.inputs ? '，含 ' + ev.inputs + ' 个待检文件放入 input/' : '') + '）'; break;
+      case 'chat': cls = 'chat'; lab = '💭 第 ' + ev.round + ' 轮 · 模型回复'; sub = '思考耗时 ' + fmtMs(ev.ms); break;
+      case 'exec': cls = 'exec'; lab = '⌨ 第 ' + ev.round + ' 轮 · 执行命令'; cmd = ev.cmd;
+        sub = '<span class="tr-badge run">执行中…</span>'; break;
+      case 'retry': cls = 'warn'; lab = '⚠ 第 ' + ev.round + ' 轮 · 回复不是有效 JSON'; sub = '已要求重试（' + ev.bad + '/' + ev.max + '）'; break;
+      case 'warn': cls = 'warn'; lab = '⚠ 第 ' + ev.round + ' 轮 · 疑似循环'; sub = '相同命令已连续执行 ' + ev.same + ' 次'; break;
+      case 'loop': cls = 'err'; lab = '⛔ 第 ' + ev.round + ' 轮 · 判定死循环'; sub = '相同命令连续 ' + ev.same + ' 次，停止执行并收尾'; break;
+      case 'limit': cls = 'warn';
+        lab = '⏱ 达到执行上限';
+        sub = ev.max ? '已执行 ' + ev.round + '/' + ev.max + ' 轮，正在总结收尾…' : '模型连续 ' + ev.bad + ' 轮未返回有效 JSON，正在收尾…'; break;
+      case 'wrap': cls = ev.ok ? 'final' : 'err'; lab = ev.ok ? '🧭 强制收尾成功' : '强制收尾失败';
+        if (ev.ok) sub = '基于已有进度生成总结（' + ev.chars + ' 字符）'; break;
+      case 'final': cls = 'final'; lab = '✅ 任务完成'; sub = '共 ' + ev.round + ' 轮 · 最终结果 ' + ev.chars + ' 字符'; break;
+      case 'error': cls = 'err'; lab = '❌ 执行失败'; sub = esc(ev.msg); break;
+      default: cls = ''; lab = esc(ev.k);
+    }
+    html += '<div class="tr-item cls-' + cls + '"><div class="tr-idx"></div><div class="tr-body"><div class="tr-lab">' + lab + '</div>'
+      + (sub ? '<div class="tr-sub">' + sub + '</div>' : '')
+      + (cmd ? '<div class="tr-cmd">$ ' + esc(cmd) + '</div>' : '')
+      + '</div></div>';
+  }
+  return '<div class="tr-wrap">' + html + '</div>';
 }
 /* 读取执行器上的文件（返回 UTF-8 文本；≤20MB） */
 async function hostReadFile(path) {
@@ -545,7 +618,7 @@ async function hostFindHtml(root, sinceTs) {
     return;
   }
 
-  let running = false, lastResult = '', resultHtml = null, browserHtml = null, hostTranscript = '';
+  let running = false, lastResult = '', resultHtml = null, browserHtml = null, hostTranscript = '', hostTraceSteps = [];
 
   document.title = D.name + ' · Skill 工具';
   $('hdTitle').textContent = D.name;
@@ -798,10 +871,13 @@ async function hostFindHtml(root, sinceTs) {
     if (hostMode) {
       running = true; $('btnRun').disabled = true;
       $('out').setAttribute('data-noi18n', '1');
-      $('out').classList.remove('md'); $('out').classList.add('term');
+      $('out').classList.remove('md'); $('out').classList.add('term'); $('out').classList.remove('trace');
       $('out').textContent = ''; $('out').classList.remove('hide');
       $('btnRender').classList.add('hide');
+      $('btnTrace').classList.remove('hide'); $('btnTrace').classList.remove('on');
+      viewTrace = false;
       hostTranscript = '';
+      hostTraceSteps = [];
       $('bSrc').innerHTML = ''; $('bSrc').classList.add('hide');   // 清掉上次执行残留的来源选项
       const print = line => {
         hostTranscript += (hostTranscript ? '\n' : '') + line;
@@ -817,6 +893,8 @@ async function hostFindHtml(root, sinceTs) {
           .concat((D.refs || []).filter(r => r.content).map(r => ({ path: r.name, content: r.content })))
           .concat(inputFiles);
         const up = await hostUploadSkill(D.name, files);
+        hostTraceSteps.push({ k: 'start', dir: up.dir, files: up.files, inputs: inputFiles.length });
+        if (viewTrace) showTrace();
         print('[host] 技能包已安装：' + up.dir + '（' + up.files + ' 个文件' + (inputFiles.length ? '，含 ' + inputFiles.length + ' 个待检文件已放入 input/' : '') + '）');
         const scriptList = (D.refs || []).filter(r => r.content && /\.(py|sh)$/i.test(r.name))
           .map(r => '- ' + r.name).join('\n');
@@ -867,7 +945,11 @@ async function hostFindHtml(root, sinceTs) {
           sys, user, dir: up.dir,
           status: s => { $('stat').textContent = I18N.tr(s); },
           print,
-          chat: chatOnce
+          chat: chatOnce,
+          trace: ev => {
+            hostTraceSteps.push(ev);
+            if (viewTrace) showTrace();
+          }
         });
         lastResult = answer;
         finish();
@@ -877,6 +959,8 @@ async function hostFindHtml(root, sinceTs) {
         $('stat').textContent = I18N.tr('完成（底层真执行 · 结果 ') + answer.length + I18N.tr(' 字符）');
         await loadGeneratedHtml(up.dir, runStartTs);   // 加载执行期间磁盘上生成的 HTML 报告
       } catch (e) {
+        hostTraceSteps.push({ k: 'error', msg: e.message });
+        if (viewTrace) showTrace();
         $('stat').textContent = I18N.tr('执行失败');
         $('out').textContent += '\n❌ ' + e.message + hostErrHint(e);
       }
@@ -901,6 +985,8 @@ async function hostFindHtml(root, sinceTs) {
     $('out').classList.remove('md'); $('out').classList.add('term'); $('out').textContent = '';
     $('out').classList.remove('hide');
     $('btnRender').classList.add('hide');
+    $('btnTrace').classList.add('hide');   // 纯模型模式无命令轨迹
+    viewTrace = false; hostTraceSteps = [];
     try {
       const res = await fetch(base.replace(/\/+$/, '') + '/chat/completions', {
         method: 'POST',
@@ -942,9 +1028,12 @@ async function hostFindHtml(root, sinceTs) {
 
   /* 结果视图：默认修饰渲染（Markdown），可切回终端原样输出 */
   let viewMd = true;   // 记录当前视图，便于从「来源文件视图」恢复
+  let viewTrace = false;   // 轨迹视图：执行期间可随时切换实时查看
   function setView(md) {
-    viewMd = md;
+    viewMd = md; viewTrace = false;
+    $('btnTrace') && $('btnTrace').classList.remove('on');
     $('out').setAttribute('data-noi18n', '1');
+    $('out').classList.remove('trace');
     if (md) {
       $('out').classList.add('md'); $('out').classList.remove('term');
       $('out').innerHTML = renderMarkdown(lastResult);
@@ -958,6 +1047,15 @@ async function hostFindHtml(root, sinceTs) {
     }
   }
   $('btnRender').onclick = () => { browserBackToInline(); setView(!$('out').classList.contains('md')); };
+  function showTrace() {
+    viewTrace = true; viewMd = false;
+    $('out').setAttribute('data-noi18n', '1');
+    $('out').classList.remove('md'); $('out').classList.remove('term'); $('out').classList.add('trace');
+    $('out').innerHTML = renderTraceHtml(hostTraceSteps);
+    $('out').scrollTop = $('out').scrollHeight;
+    $('btnTrace').classList.add('on'); $('btnRender').classList.remove('on');
+  }
+  $('btnTrace').onclick = () => { browserBackToInline(); showTrace(); };
 
   function finish() {
     resultHtml = extractHtml(lastResult);
