@@ -18,7 +18,33 @@ Chrome / Edge 等基于 Chromium 的浏览器均可安装（Manifest V3）。
    - 执行过程与输出全部显示在结果终端区；点击执行即直接运行，无需逐条确认
 4. 「本地待检目录」字段可直接**粘贴本机绝对路径**（如 `/Users/you/Downloads/待检目录`），模型在命令中直接访问真实文件
 
-> 未连接执行器时，带脚本的 Skill 自动降级为纯模型模式（原行为不变）。执行器只监听本机回环地址，模型给出的每条命令默认需人工确认。
+> 未连接执行器时，带脚本的 Skill 自动降级为纯模型模式（原行为不变）。执行器只监听本机回环地址；v1.7.1 起点击执行直接运行，无需逐条确认。
+
+## MCP 通用桥接器（v1.8.0 ⭐）
+
+把所有已安装 Skill 自动暴露为 MCP 工具，任何支持 MCP 的 AI 客户端（WorkBuddy / Claude Desktop / …）可**对话式直接调用**。与网页版共用 `~/.skill-forge/skills/`：网页上传的 Skill 立即可用，这里安装的网页也能看到；**新增 / 更新 Skill 不需要重新生成或注册任何东西**。
+
+注册（MCP 客户端配置，stdio 传输）：
+```json
+{
+  "mcpServers": {
+    "skill-forge": {
+      "command": "python3",
+      "args": ["/path/to/skill-forge-mcp.py"]
+    }
+  }
+}
+```
+
+工具一览（纯标准库，无第三方依赖）：
+- `list_skills`：列出已装技能（名称 / 描述 / 文件）
+- `use_skill(name)`：读取 SKILL.md 完整指令，供 AI 规划执行
+- `read_skill_file(name, path)`：读取技能内参考文件
+- `run_skill(name, command, timeout?)`：技能目录下同步执行命令，返回真实输出
+- `start_job / job_status`：长任务后台执行 + 轮询（上限 1800 秒）
+- `install_skill(path)`：从本机 .zip / 目录安装技能包，装完即用
+
+典型对话：装好 Skill 后对 AI 说「用 skill-forge 检查 /path/to/目录」——AI 会自动 `list_skills → use_skill 读指令 → run_skill 跑脚本 → 汇总结果`。
 
 ## 安装（开发者模式加载，无需上架）
 
@@ -89,12 +115,15 @@ API Key 仅保存在本机浏览器存储中，请求由本机直接发向你配
 ## 文件结构
 ```
 skill-forge-extension/
-├── manifest.json      # MV3 配置（含 sandbox 沙箱页声明）
-├── background.js      # 右键菜单 + 打开工作台
-├── popup.html/js      # 工具栏弹窗（技能库 + 我的页面 + 快捷入口）
-├── app.html/js        # 工作台（核心界面）
-├── tool.html/css/js   # 独立工具页（「新标签页打开此界面」+ 导出单文件共用）
-├── doc.html/js        # 结果页面预览器（沙箱真实渲染）
-├── sandbox.html       # 沙箱页（执行生成页面里的脚本）
-└── icons/             # 图标
+├── manifest.json        # MV3 配置（含 sandbox 沙箱页声明）
+├── background.js        # 右键菜单 + 打开工作台
+├── popup.html/js        # 工具栏弹窗（技能库 + 我的页面 + 快捷入口）
+├── app.html/js          # 工作台（核心界面）
+├── tool.html/css/js     # 独立工具页（「新标签页打开此界面」+ 导出单文件共用）
+├── doc.html/js          # 结果页面预览器（沙箱真实渲染）
+├── sandbox.html         # 沙箱页（执行生成页面里的脚本）
+├── skill-forge-host.py  # 本地执行器（HTTP，配合网页版真执行）
+├── skill-forge-mcp.py   # MCP 通用桥接器（stdio，供 AI 客户端调用）
+├── 启动本地执行器.command
+└── icons/               # 图标
 ```
