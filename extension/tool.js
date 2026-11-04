@@ -409,6 +409,27 @@ async function hostAgentRun(o) {
   }
   throw new Error('执行轮次超限（15 轮），Skill 可能陷入循环，请检查指令');
 }
+/* 读取执行器上的文件（返回 UTF-8 文本；≤20MB） */
+async function hostReadFile(path) {
+  const r = await fetch(hostBase() + '/read', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path })
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!j.ok) throw new Error(j.error || ('HTTP ' + r.status));
+  const bytes = Uint8Array.from(atob(j.b64), ch => ch.charCodeAt(0));
+  return { text: new TextDecoder().decode(bytes), size: j.size, path: j.path };
+}
+/* 递归查找执行生成的 HTML 报告（跳过 input/ 与隐藏目录，按修改时间倒序） */
+async function hostFindHtml(root, sinceTs) {
+  const r = await fetch(hostBase() + '/find', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ root, ext: '.html', since: sinceTs || 0 })
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!j.ok) throw new Error(j.error || ('HTTP ' + r.status));
+  return j;
+}
 /* ===== host 本地执行器 END ===== */
 
 /* ===== 主流程 ===== */
@@ -420,7 +441,7 @@ async function hostAgentRun(o) {
     return;
   }
 
-  let running = false, lastResult = '', resultHtml = null;
+  let running = false, lastResult = '', resultHtml = null, browserHtml = null;
 
   document.title = D.name + ' · Skill 工具';
   $('hdTitle').textContent = D.name;
@@ -539,6 +560,50 @@ async function hostAgentRun(o) {
   }
   setBrowser(false);
 
+  /* ===== 内嵌浏览器：加载执行器上真实生成的 HTML 报告文件 ===== */
+  async function browserLoadLocal(path) {
+    try {
+      const r = await hostReadFile(path);
+      browserHtml = r.text;
+      $('pv').srcdoc = r.text;
+      setBrowser(true);
+      $('bTag').textContent = '📄 ' + path.split('/').pop();
+      $('bSrc').value = path;
+    } catch (e) { toast('读取执行器上的 HTML 失败：' + e.message); }
+  }
+  async function loadGeneratedHtml(dir, sinceTs) {
+    try {
+      const r = await hostFindHtml(dir, sinceTs);
+      const files = r.files || [];
+      if (!files.length) return;
+      const sel = $('bSrc');
+      sel.innerHTML = '';
+      if (resultHtml) {
+        const o = document.createElement('option');
+        o.value = '__inline__'; o.textContent = I18N.tr('最终结果中的页面');
+        sel.appendChild(o);
+      }
+      files.forEach(f => {
+        const o = document.createElement('option');
+        o.value = f.path; o.textContent = '📄 ' + (f.rel || f.path);
+        sel.appendChild(o);
+      });
+      sel.classList.toggle('hide', sel.options.length < 2);
+      if (!resultHtml) await browserLoadLocal(files[0].path);
+    } catch (e) { /* 执行器离线等场景静默跳过 */ }
+  }
+  $('bSrc').onchange = () => {
+    const v = $('bSrc').value;
+    if (v === '__inline__') {
+      browserHtml = resultHtml;
+      if (resultHtml) {
+        $('pv').srcdoc = resultHtml;
+        setBrowser(true);
+        $('bTag').textContent = I18N.tr('已渲染 HTML');
+      }
+    } else if (v) browserLoadLocal(v);
+  };
+
   function download(content, type, name) {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([content], { type: type }));
@@ -605,6 +670,7 @@ async function hostAgentRun(o) {
       };
       let transcript = '';
       try {
+        const runStartTs = Math.floor(Date.now() / 1000) - 2;   // 用于识别执行期间新生成的文件
         $('stat').textContent = I18N.tr('正在把技能包安装到本地执行器…');
         /* 收集勾选的本地文件（含二进制），随技能包一并上传到 input/ 目录 */
         const inputFiles = await folderCollectFiles(D.fields, f => document.querySelector('#form .field[data-fkey="' + f.key + '"]'));
@@ -633,7 +699,8 @@ async function hostAgentRun(o) {
           + '# 输出协议（严格遵守）\n每次回复只输出一个 JSON 对象，二选一：\n'
           + '{"action":"exec","command":"要执行的一条 shell 命令"}\n'
           + '{"action":"final","answer":"给用户的最终结果（完整保留 Skill 要求的格式，如报告/JSON/HTML）"}\n'
-          + '不要输出任何多余文字。需要多条命令就分多轮逐条执行；全部完成后再给 final。';
+          + '不要输出任何多余文字。需要多条命令就分多轮逐条执行；全部完成后再给 final。\n'
+          + '若 Skill 要产出 HTML 报告/页面，请把文件保存到技能目录下（如 report.html），并在 final 的 answer 里列出该文件的相对路径——用户浏览器会自动加载预览；不要把大段 HTML 直接贴进 answer。';
         const user = '请执行此 Skill。输入参数：\n'
           + Object.keys(values).map(k => '【' + k + '】\n' + values[k]).join('\n\n');
         const chatOnce = async msgs => {
@@ -656,6 +723,7 @@ async function hostAgentRun(o) {
         /* finish 会把中栏重置为最终结果；这里恢复为「执行过程 + 最终结果」，与终端一致 */
         $('out').textContent = transcript + '\n────────── 最终结果 ──────────\n' + answer;
         $('stat').textContent = I18N.tr('完成（底层真执行 · 结果 ') + answer.length + I18N.tr(' 字符）');
+        await loadGeneratedHtml(up.dir, runStartTs);   // 加载执行期间磁盘上生成的 HTML 报告
       } catch (e) {
         $('stat').textContent = I18N.tr('执行失败');
         $('out').textContent += '\n❌ ' + e.message + I18N.tr('\n\n常见原因：接口地址需以 /v1 结尾；Key 无效或额度不足；浏览器跨域限制。');
@@ -737,11 +805,14 @@ async function hostAgentRun(o) {
   function finish() {
     resultHtml = extractHtml(lastResult);
     if (resultHtml) {
+      browserHtml = resultHtml;
       $('pv').srcdoc = resultHtml;          // 右栏内嵌浏览器默认渲染 HTML 结果
       setBrowser(true);
       $('btnRender').classList.add('hide');
     } else {
+      browserHtml = null;
       setBrowser(false);
+      $('bSrc').classList.add('hide');
       $('btnRender').classList.remove('hide');
     }
     $('out').classList.remove('hide');
@@ -753,22 +824,22 @@ async function hostAgentRun(o) {
   $('btnCopy').onclick = () => { navigator.clipboard.writeText(lastResult); toast('已复制'); };
   $('btnDl').onclick = () => download(lastResult, 'text/markdown', D.name + '-结果.md');
   $('btnOpenHtml').onclick = async () => {
-    if (!resultHtml) return;
+    if (!browserHtml) return;
     if (isExt) {
       // 扩展内：交给 doc.html + 沙箱页渲染，保证页面里的脚本能执行
       const { resultDocs = {} } = await chrome.storage.local.get(['resultDocs']);
       const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
-      resultDocs[id] = { html: resultHtml, title: D.name + '-页面', date: Date.now() };
+      resultDocs[id] = { html: browserHtml, title: D.name + '-页面', date: Date.now() };
       const keys = Object.keys(resultDocs);
       if (keys.length > 30) keys.slice(0, keys.length - 30).forEach(k => delete resultDocs[k]);
       await chrome.storage.local.set({ resultDocs });
       chrome.tabs.create({ url: chrome.runtime.getURL('doc.html?id=' + id) });
       return;
     }
-    window.open(URL.createObjectURL(new Blob([resultHtml], { type: 'text/html' })), '_blank');
+    window.open(URL.createObjectURL(new Blob([browserHtml], { type: 'text/html' })), '_blank');
   };
   $('btnDlHtml').onclick = () => {
-    if (!resultHtml) return;
-    download(resultHtml, 'text/html', D.name + '-页面.html');
+    if (!browserHtml) return;
+    download(browserHtml, 'text/html', D.name + '-页面.html');
   };
 })();

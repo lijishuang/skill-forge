@@ -748,6 +748,27 @@ async function hostAgentRun(o) {
   }
   throw new Error('执行轮次超限（15 轮），Skill 可能陷入循环，请检查指令');
 }
+/* 读取执行器上的文件（返回 UTF-8 文本；≤20MB） */
+async function hostReadFile(path) {
+  const r = await fetch(hostBase() + '/read', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path })
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!j.ok) throw new Error(j.error || ('HTTP ' + r.status));
+  const bytes = Uint8Array.from(atob(j.b64), ch => ch.charCodeAt(0));
+  return { text: new TextDecoder().decode(bytes), size: j.size, path: j.path };
+}
+/* 递归查找执行生成的 HTML 报告（跳过 input/ 与隐藏目录，按修改时间倒序） */
+async function hostFindHtml(root, sinceTs) {
+  const r = await fetch(hostBase() + '/find', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ root, ext: '.html', since: sinceTs || 0 })
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!j.ok) throw new Error(j.error || ('HTTP ' + r.status));
+  return j;
+}
 /* ===== host 本地执行器 END ===== */
 
 /* ===== 界面生成 ===== */
@@ -958,6 +979,7 @@ async function run() {
     $('output').textContent = ''; $('output').setAttribute('data-noi18n', '1');
     $('output').classList.remove('hidden');
     try {
+      const runStartTs = Math.floor(Date.now() / 1000) - 2;   // 用于识别执行期间新生成的文件
       setRun(true, '正在把技能包安装到本地执行器…');
       /* 收集勾选的本地文件（含二进制），随技能包一并上传到 input/ 目录 */
       const inputFiles = await folderCollectFiles(FIELDS, f => document.querySelector(`#formArea .field[data-fkey="${f.key}"]`));
@@ -989,7 +1011,8 @@ async function run() {
         + '# 输出协议（严格遵守）\n每次回复只输出一个 JSON 对象，二选一：\n'
         + '{"action":"exec","command":"要执行的一条 shell 命令"}\n'
         + '{"action":"final","answer":"给用户的最终结果（完整保留 Skill 要求的格式，如报告/JSON/HTML）"}\n'
-        + '不要输出任何多余文字。需要多条命令就分多轮逐条执行；全部完成后再给 final。';
+        + '不要输出任何多余文字。需要多条命令就分多轮逐条执行；全部完成后再给 final。\n'
+        + '若 Skill 要产出 HTML 报告/页面，请把文件保存到技能目录下（如 report.html），并在 final 的 answer 里列出该文件的相对路径——用户浏览器会自动加载预览；不要把大段 HTML 直接贴进 answer。';
       const user = '请执行此 Skill。输入参数：\n'
         + Object.entries(values).map(([k, v]) => `【${k}】\n${v}`).join('\n\n');
       const chatOnce = async msgs => {
@@ -1012,6 +1035,7 @@ async function run() {
       setRun(false, `完成（底层真执行 · 结果 ${answer.length} 字符）`, 'ok');
       $('btnCopy').disabled = false; $('btnDownload').disabled = false;
       updateResultActions();
+      await loadGeneratedHtml(up.dir, runStartTs);   // 加载执行期间磁盘上生成的 HTML 报告
       await saveHistory();
     } catch (e) {
       setRun(false, '执行失败：' + e.message, 'err');
@@ -1095,7 +1119,7 @@ $('btnDownload').onclick = () => {
 };
 
 /* ===== 结果 HTML 单独打开/下载 ===== */
-let resultHtml = null, htmlUrl = null;
+let resultHtml = null, htmlUrl = null, browserHtml = null;
 
 /* 把 HTML 片段补全成可独立打开的完整文档 */
 function wrapHtmlFragment(frag) {
@@ -1143,6 +1167,7 @@ $('segMd').onclick = () => setResultView('md');
 
 function updateResultActions() {
   resultHtml = extractHtml(lastResult || '');
+  browserHtml = resultHtml;
   $('segBar').classList.toggle('hidden', !lastResult);
   const bFrame = $('browserFrame'), bEmpty = $('browserEmpty');
   if (resultHtml) {
@@ -1158,6 +1183,55 @@ function updateResultActions() {
     ['brOpen', 'brDl', 'brSave'].forEach(id => $(id).classList.add('hidden'));
   }
 }
+
+/* ===== 内嵌浏览器：加载执行器上真实生成的 HTML 报告文件 ===== */
+async function browserLoadLocal(path) {
+  try {
+    const r = await hostReadFile(path);
+    browserHtml = r.text;
+    $('browserFrame').srcdoc = r.text;
+    $('browserFrame').style.display = 'block';
+    $('browserEmpty').classList.add('hidden');
+    $('browserTag').textContent = '📄 ' + path.split('/').pop();
+    ['brOpen', 'brDl', 'brSave'].forEach(id => $(id).classList.remove('hidden'));
+    $('browserSrc').value = path;
+  } catch (e) { toast('读取执行器上的 HTML 失败：' + e.message); }
+}
+/* 执行结束后调用：发现执行期间在技能目录里生成的 .html 文件并挂入来源选择 */
+async function loadGeneratedHtml(dir, sinceTs) {
+  try {
+    const r = await hostFindHtml(dir, sinceTs);
+    const files = r.files || [];
+    if (!files.length) return;
+    const sel = $('browserSrc');
+    sel.innerHTML = '';
+    if (resultHtml) {
+      const o = document.createElement('option');
+      o.value = '__inline__'; o.textContent = I18N.tr('最终结果中的页面');
+      sel.appendChild(o);
+    }
+    files.forEach(f => {
+      const o = document.createElement('option');
+      o.value = f.path; o.textContent = '📄 ' + (f.rel || f.path);
+      sel.appendChild(o);
+    });
+    sel.classList.toggle('hidden', sel.options.length < 2);
+    if (!resultHtml) await browserLoadLocal(files[0].path);   // 结果无 HTML 时自动加载最新生成的
+  } catch (e) { /* 执行器离线等场景静默跳过 */ }
+}
+$('browserSrc').onchange = () => {
+  const v = $('browserSrc').value;
+  if (v === '__inline__') {
+    browserHtml = resultHtml;
+    if (resultHtml) {
+      $('browserFrame').srcdoc = resultHtml;
+      $('browserFrame').style.display = 'block';
+      $('browserEmpty').classList.add('hidden');
+      $('browserTag').textContent = I18N.tr('已渲染结果页面');
+      ['brOpen', 'brDl', 'brSave'].forEach(id => $(id).classList.remove('hidden'));
+    }
+  } else if (v) browserLoadLocal(v);
+};
 /* 打开一个生成出来的 HTML 页面：
    扩展内走 doc.html + 沙箱页（blob 会继承扩展 CSP，页面里的脚本会被拦）；无插件环境直接用 blob */
 async function openHtmlPage(html, title) {
@@ -1177,21 +1251,21 @@ async function openHtmlPage(html, title) {
   window.open(htmlUrl, '_blank');
 }
 
-/* 内嵌浏览器栏的操作按钮 */
+/* 内嵌浏览器栏的操作按钮（browserHtml = 当前预览的 HTML：结果内联或磁盘生成的文件） */
 $('brOpen').onclick = async () => {
-  if (!resultHtml) return;
-  await openHtmlPage(resultHtml, (SKILL ? SKILL.name : '页面') + '-页面');
+  if (!browserHtml) return;
+  await openHtmlPage(browserHtml, (SKILL ? SKILL.name : '页面') + '-页面');
   toast('已在新标签页打开 HTML 页面');
 };
 $('brDl').onclick = () => {
-  if (!resultHtml) return;
+  if (!browserHtml) return;
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([resultHtml], { type: 'text/html' }));
+  a.href = URL.createObjectURL(new Blob([browserHtml], { type: 'text/html' }));
   a.download = (SKILL ? SKILL.name : 'result') + '-页面.html'; a.click();
 };
 $('brSave').onclick = async () => {
-  if (!resultHtml) return;
-  await addPage({ name: (SKILL ? SKILL.name : '页面') + '-页面', type: 'static', html: resultHtml });
+  if (!browserHtml) return;
+  await addPage({ name: (SKILL ? SKILL.name : '页面') + '-页面', type: 'static', html: browserHtml });
 };
 
 /* ===== 独立工具页：界面 → 可单独打开的 HTML 页面 ===== */
