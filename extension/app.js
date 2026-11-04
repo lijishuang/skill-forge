@@ -978,6 +978,7 @@ async function run() {
     $('output').classList.remove('md'); $('output').classList.add('term');
     $('output').textContent = ''; $('output').setAttribute('data-noi18n', '1');
     $('output').classList.remove('hidden');
+    hostTranscript = '';
     try {
       const runStartTs = Math.floor(Date.now() / 1000) - 2;   // 用于识别执行期间新生成的文件
       setRun(true, '正在把技能包安装到本地执行器…');
@@ -988,6 +989,7 @@ async function run() {
         .concat(inputFiles);
       const up = await hostUploadSkill(SKILL.name, files);
       const print = line => {
+        hostTranscript += (hostTranscript ? '\n' : '') + line;
         $('output').textContent += ($('output').textContent ? '\n' : '') + line;
         $('output').scrollTop = $('output').scrollHeight;
       };
@@ -1034,6 +1036,7 @@ async function run() {
       print('\n────────── 最终结果 ──────────\n' + answer);
       setRun(false, `完成（底层真执行 · 结果 ${answer.length} 字符）`, 'ok');
       $('btnCopy').disabled = false; $('btnDownload').disabled = false;
+      setResultView('md');   // 默认修饰显示；切「终端」可看完整执行过程
       updateResultActions();
       await loadGeneratedHtml(up.dir, runStartTs);   // 加载执行期间磁盘上生成的 HTML 报告
       await saveHistory();
@@ -1056,12 +1059,13 @@ async function run() {
   setRun(true, '正在调用模型…'); $('output').classList.remove('md'); $('output').classList.add('term');
   $('output').textContent = '';
   $('output').setAttribute('data-noi18n', '1');
+  hostTranscript = '';
   try {
     const used = await chat([{ role: 'system', content: sys }, { role: 'user', content: user }], true, c);
     setRun(false, `完成（输出 ${lastResult.length} 字符${used ? ' · ' + used + ' tokens' : ''}）`, 'ok');
     $('btnCopy').disabled = false; $('btnDownload').disabled = false;
-    // 结果保持终端原样输出；需要美化可切「渲染」视图
-    setResultView('term');
+    // 结果默认修饰显示；需要原样输出可切「终端」视图
+    setResultView('md');
     updateResultActions();
     await saveHistory();
   } catch (e) {
@@ -1148,19 +1152,24 @@ function extractHtml(text) {
   return cand;
 }
 
-/* ===== 结果视图：默认终端（与终端输出完全一致），可选 Markdown 渲染 ===== */
-let resultView = 'term';
+/* ===== 结果视图：默认修饰渲染（Markdown），可切回终端原样输出 ===== */
+let resultView = 'md';
+let hostTranscript = '';   // 真执行模式的过程记录（终端视图时与最终结果一起显示）
 function setResultView(v) {
   resultView = v;
   $('segTerm').classList.toggle('on', v === 'term');
   $('segMd').classList.toggle('on', v === 'md');
+  $('output').setAttribute('data-noi18n', '1');
   if (v === 'md') {
     $('output').classList.add('md'); $('output').classList.remove('term');
     $('output').innerHTML = renderMarkdown(lastResult);
   } else {
     $('output').classList.remove('md'); $('output').classList.add('term');
-    $('output').textContent = lastResult;
+    $('output').textContent = hostTranscript
+      ? hostTranscript + '\n────────── 最终结果 ──────────\n' + lastResult
+      : lastResult;
   }
+  $('output').scrollTop = 0;
 }
 $('segTerm').onclick = () => setResultView('term');
 $('segMd').onclick = () => setResultView('md');

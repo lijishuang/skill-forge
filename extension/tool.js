@@ -441,7 +441,7 @@ async function hostFindHtml(root, sinceTs) {
     return;
   }
 
-  let running = false, lastResult = '', resultHtml = null, browserHtml = null;
+  let running = false, lastResult = '', resultHtml = null, browserHtml = null, hostTranscript = '';
 
   document.title = D.name + ' · Skill 工具';
   $('hdTitle').textContent = D.name;
@@ -662,13 +662,12 @@ async function hostFindHtml(root, sinceTs) {
       $('out').classList.remove('md'); $('out').classList.add('term');
       $('out').textContent = ''; $('out').classList.remove('hide');
       $('btnRender').classList.add('hide');
+      hostTranscript = '';
       const print = line => {
-        const s = (transcript ? '\n' : '') + line;
-        transcript += s;
+        hostTranscript += (hostTranscript ? '\n' : '') + line;
         $('out').textContent += ($('out').textContent ? '\n' : '') + line;
         $('out').scrollTop = $('out').scrollHeight;
       };
-      let transcript = '';
       try {
         const runStartTs = Math.floor(Date.now() / 1000) - 2;   // 用于识别执行期间新生成的文件
         $('stat').textContent = I18N.tr('正在把技能包安装到本地执行器…');
@@ -720,8 +719,9 @@ async function hostFindHtml(root, sinceTs) {
         });
         lastResult = answer;
         finish();
-        /* finish 会把中栏重置为最终结果；这里恢复为「执行过程 + 最终结果」，与终端一致 */
-        $('out').textContent = transcript + '\n────────── 最终结果 ──────────\n' + answer;
+        /* 默认修饰显示最终结果；切「终端」可看完整执行过程 */
+        $('btnRender').classList.remove('hide');
+        setView(true);
         $('stat').textContent = I18N.tr('完成（底层真执行 · 结果 ') + answer.length + I18N.tr(' 字符）');
         await loadGeneratedHtml(up.dir, runStartTs);   // 加载执行期间磁盘上生成的 HTML 报告
       } catch (e) {
@@ -788,15 +788,18 @@ async function hostFindHtml(root, sinceTs) {
     running = false; $('btnRun').disabled = false;
   }
 
-  /* 结果视图：默认终端原样输出，可切换 Markdown 渲染 */
+  /* 结果视图：默认修饰渲染（Markdown），可切回终端原样输出 */
   function setView(md) {
+    $('out').setAttribute('data-noi18n', '1');
     if (md) {
       $('out').classList.add('md'); $('out').classList.remove('term');
       $('out').innerHTML = renderMarkdown(lastResult);
       $('btnRender').classList.add('on');
     } else {
       $('out').classList.remove('md'); $('out').classList.add('term');
-      $('out').textContent = lastResult;
+      $('out').textContent = hostTranscript
+        ? hostTranscript + '\n────────── 最终结果 ──────────\n' + lastResult
+        : lastResult;
       $('btnRender').classList.remove('on');
     }
   }
@@ -816,7 +819,7 @@ async function hostFindHtml(root, sinceTs) {
       $('btnRender').classList.remove('hide');
     }
     $('out').classList.remove('hide');
-    setView(false);   // 中栏始终为终端原样输出，与终端结果完全一致
+    setView(true);   // 默认修饰显示；切「终端」看原样输出
     retr();
   }
 
